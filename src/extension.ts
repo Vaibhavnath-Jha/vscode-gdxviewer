@@ -35,10 +35,12 @@ export function activate(context: vscode.ExtensionContext) {
             return;
           }
 
+          const path = require('path');
+          const fileName = path.basename(fileToParse);
           // Show the webview panel
           const panel = vscode.window.createWebviewPanel(
             'parsedDataView',
-            'Parsed Data Viewer',
+            fileName,
             vscode.ViewColumn.One,
             { enableScripts: true }
           );
