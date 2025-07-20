@@ -1,54 +1,25 @@
 # gdxviewer
-This is the README for your extension "gdxviewer". After writing up a brief description, we recommend including the following sections.
+This extension renders the GAMS GDX file in VSCode Webview. It executes a Python script in the background using Node's `child_process`. The python interperter, which contains the `gams` library, must be set before using the extension. 
 
 ## Features
+The `gdxviewer` renders the content of the GAMS GDX file in VSCode WebView. 
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+1. Simply select a symbol from the sidebar to display its content.
+2. User can search for a symbol in the GDX file.
+3. Since `gdxviewer` parses JSON string to display the content in the Webview, values like `Infinity` and `-Infinity` has been replaced with `1e+300` and `1e-300`.
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+The python script that reads the data from the GDX file requires that gams\[transfer] is installed in the provided Python interpreter.
 
 ## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
 
 This extension contributes the following settings:
 
 * `gdx.Display`: Display the GDX File.
 
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
 ## Release Notes
-
-Users appreciate release notes as you update your extension.
 
 ### 1.0.0
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+- Initial release of `gdxviewer`.
