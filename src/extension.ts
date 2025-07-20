@@ -3,61 +3,64 @@ import * as path from 'path';
 import { execFile } from 'child_process';
 
 export function activate(context: vscode.ExtensionContext) {
-	context.subscriptions.push(
-		vscode.commands.registerCommand('gdx.Display', async (resource: vscode.Uri) => {
-			// Get full path of the python script
-			const pythonPath = await vscode.commands.executeCommand<string>(
-				'python.interpreterPath',
-				{ workspaceFolder: vscode.workspace.workspaceFolders?.[0] }
-			);
+  context.subscriptions.push(
+    vscode.commands.registerCommand('gdx.Display', async (resource: vscode.Uri) => {
+      const pythonPath = await vscode.commands.executeCommand<string>(
+        'python.interpreterPath',
+        { workspaceFolder: vscode.workspace.workspaceFolders?.[0] }
+      );
 
-			const scriptPath = path.join(context.extensionPath, 'scripts', 'readgdx.py');
+      const scriptPath = path.join(context.extensionPath, 'scripts', 'readgdx.py');
 
-			// Example: Pass a file argument if needed
-			let fileToParse: string | undefined = resource?.fsPath;
-			if (!fileToParse) {
-				fileToParse = await vscode.window.showInputBox({ prompt: "Path to .gdx file" });
-				if (!fileToParse) {
-					vscode.window.showWarningMessage('No file path provided.');
-					return;
-				}
-			}
+      let fileToParse: string | undefined = resource?.fsPath;
+      if (!fileToParse) {
+        fileToParse = await vscode.window.showInputBox({ prompt: "Path to .gdx file" });
+        if (!fileToParse) {
+          vscode.window.showWarningMessage('No file path provided.');
+          return;
+        }
+      }
 
-			// Launch Python script as a child process
-			execFile(pythonPath, [scriptPath, fileToParse], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
-				if (error) {
-					vscode.window.showErrorMessage(`Error: ${stderr || error.message}`);
-					return;
-				}
+      if (pythonPath) {
+        execFile(pythonPath, [scriptPath, fileToParse], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+          if (error) {
+            vscode.window.showErrorMessage(`Error: ${stderr || error.message}`);
+            return;
+          }
+          let parsedData;
+          try {
+            parsedData = JSON.parse(stdout);
+          } catch {
+            vscode.window.showErrorMessage('Failed to parse Python output as JSON.');
+            return;
+          }
 
-				let parsedData;
-				try {
-					parsedData = JSON.parse(stdout);
-				} catch {
-					vscode.window.showErrorMessage('Failed to parse Python output as JSON.');
-					return;
-				}
+          // Show the webview panel
+          const panel = vscode.window.createWebviewPanel(
+            'parsedDataView',
+            'Parsed Data Viewer',
+            vscode.ViewColumn.One,
+            { enableScripts: true }
+          );
 
-				// Show the webview panel
-				const panel = vscode.window.createWebviewPanel(
-					'parsedDataView',
-					'Parsed Data Viewer',
-					vscode.ViewColumn.One,
-					{ enableScripts: true }
-				);
-
-				// Passing the data to webview (as JSON string)
-				panel.webview.html = getWebviewContent(parsedData);
-			});
-		})
-	);
+          // Passing the data to webview (as JSON string)
+          panel.webview.html = getWebviewContent(parsedData);
+        });
+      } else {
+        vscode.window.showErrorMessage(
+          "Python interpreter is not set. Please select a Python interpreter before running the script."
+        );
+        throw new Error("Python interpreter path is not set.");
+      }
+    })
+  );
 }
 
 function getWebviewContent(data: any): string {
-	const dataString = JSON.stringify(data).replace(/</g, '\\u003c');
-	const categoryKeys = Object.keys(data || {});
+  const dataString = JSON.stringify(data).replace(/</g, '\\u003c');
+  const categoryKeys = Object.keys(data || {});
 
-	return /*html*/ `
+  return /*html*/ `
 <!DOCTYPE html>
 <html lang="en">
 <head>
