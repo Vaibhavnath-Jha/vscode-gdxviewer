@@ -60,38 +60,51 @@ function getWebviewContent(data: any): string {
   const dataString = JSON.stringify(data).replace(/</g, '\\u003c');
   const categoryKeys = Object.keys(data || {});
 
-  return /*html*/ `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VSCode Tables</title>
-  <style>
+  const css = /*css*/ `
+  :root {
+      --background: var(--vscode-editor-background, #1e1e1e);
+      --sidebar-bg: var(--vscode-sideBar-background, #191d20);
+      --sidebar-border: var(--vscode-sideBar-border, #22252b);
+      --sidebar-fg: var(--vscode-sideBar-foreground, #dde2ee);
+      --category-bg-selected: var(--vscode-list-activeSelectionBackground, #23293c);
+      --category-fg-selected: var(--vscode-list-activeSelectionForeground, #fff);
+      --category-outline: var(--vscode-focusBorder, #446ff2);
+      --cat-icon-fg: var(--vscode-foreground, #dde2ee);
+      --table-bg: var(--vscode-editorGroupHeader-tabsBackground, #23293c);
+      --table-border: var(--vscode-input-border, #262c33);
+      --table-header-bg: var(--vscode-tab-activeBackground, #3c4760);
+      --table-header-fg: var(--vscode-tab-activeForeground, #fff);
+      --table-row-bg-alt: var(--vscode-list-inactiveSelectionBackground, #22252b);
+      --nodata-fg: var(--vscode-descriptionForeground, #ccc);
+      --table-li-hover-bg: var(--vscode-list-hoverBackground, #446ff2);
+      --table-li-hover-fg: var(--vscode-list-hoverForeground, #fff);
+      --container-fg: var(--vscode-editor-foreground, #e7e7e7);
+      --none-li-fg: var(--vscode-disabledForeground, #888ea8);
+    }
+
     body {
       font-family: system-ui, sans-serif;
       margin: 0;
       display: flex;
       height: 100vh;
-      background: #1e1e1e;
-      color: #e7e7e7;
+      background: var(--background);
+      color: var(--container-fg);
     }
     .sidebar {
-		width: 238px;
-		background: #191d20;
-		color: #dde2ee;
-		box-sizing: border-box;
-		border-right: 1px solid #22252b;
-		display: flex;
-		flex-direction: column;
-		padding-top: 0.7em;
-		/** NEW/EDITED: **/
-		height: 100vh;
-		overflow-y: auto;
-		overflow-x: hidden;
-		position: relative; /* Optional for compatibility */
-		scrollbar-gutter: stable;
-	}
+      width: 238px;
+      background: var(--sidebar-bg);
+      color: var(--sidebar-fg);
+      box-sizing: border-box;
+      border-right: 1px solid var(--sidebar-border);
+      display: flex;
+      flex-direction: column;
+      padding-top: 0.7em;
+      height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+      scrollbar-gutter: stable;
+    }
     .category {
       user-select: none;
       padding: 0.67em 1.2em 0.67em 1.2em;
@@ -113,13 +126,14 @@ function getWebviewContent(data: any): string {
       justify-content: space-between;
     }
     .category.selected, .category.expanded {
-      background: #23293c;
-      color: #fff;
+      background: var(--category-bg-selected);
+      color: var(--category-fg-selected);
     }
-    .category:focus { outline: 2px solid #446ff2; }
+    .category:focus { outline: 2px solid var(--category-outline); }
     .cat-icon {
       font-size: 1em;
       transition: transform 0.15s;
+      color: var(--cat-icon-fg);
     }
     .cat-icon.expanded {
       transform: rotate(90deg);
@@ -136,16 +150,17 @@ function getWebviewContent(data: any): string {
       font-size: 0.99em;
       border-radius: 3px;
       cursor: pointer;
-      color: #c8d3f6;
+      color: var(--sidebar-fg);
       background: none;
       transition: background 0.1s, color 0.15s;
     }
-    .table-li.selected, .table-li:hover {
-      background: #446ff2;
-      color: #fff;
+    .table-li.selected,
+    .table-li:hover {
+      background: var(--table-li-hover-bg);
+      color: var(--table-li-hover-fg);
     }
     .none-li {
-      color: #888ea8;
+      color: var(--none-li-fg);
       padding: 0.4em 1.7em 0.5em 1.6em;
       font-size: 0.95em;
       font-style: italic;
@@ -159,14 +174,14 @@ function getWebviewContent(data: any): string {
       border-collapse: collapse;
       margin-bottom: 2em;
       min-width: 320px;
-      background: #23293c;
-      color: #e5e8ee;
+      background: var(--table-bg);
+      color: var(--container-fg);
       border-radius: 7px 7px 6px 6px;
       overflow: hidden;
       box-shadow: 0 2px 7px #0003, 0 0px 0 #2226;
     }
     th, td {
-      border: 1px solid #262c33;
+      border: 1px solid var(--table-border);
       padding: 0.40em 0.77em;
       font-size: 1.05em;
       text-align: left;
@@ -174,36 +189,29 @@ function getWebviewContent(data: any): string {
       border-left: none;
     }
     th {
-      background: #3c4760;
+      background: var(--table-header-bg);
       font-weight: bold;
-      color: #fff;
-      border-bottom: 2px solid #446ff2;
+      color: var(--table-header-fg);
+      border-bottom: 2px solid var(--table-li-hover-bg);
     }
     tr:nth-child(even) td {
-      background: #22252b;
+      background: var(--table-row-bg-alt);
     }
     .nodata {
       margin: 1.7em 1em 0 2.4em;
-      color: #ccc;
+      color: var(--nodata-fg);
       font-size: 1.13em;
       font-style: italic;
     }
     @media (max-width: 700px) {
       body { flex-direction: column; }
-      .sidebar { width: 99vw; flex-direction: row; border-bottom: 1px solid #23293c; border-right: none; }
+      .sidebar { width: 99vw; flex-direction: row; border-bottom: 1px solid var(--table-bg); border-right: none; }
       .container { padding: 1.1em 3vw; }
     }
-  </style>
-</head>
-<body>
-  <aside class="sidebar" id="sidebar"></aside>
-  <main class="container">
-    <div id="table-container">
-      <div class="nodata">Select a table from a category in the sidebar</div>
-    </div>
-  </main>
-  <script>
-    const data = ${dataString};
+  `;
+
+  const js = /*javascript*/ `
+  const data = ${dataString};
     const categories = Object.keys(data);
     let expandedCats = {};
     let selectedCat = null;
@@ -314,8 +322,27 @@ function getWebviewContent(data: any): string {
 
     // Initial render:
     updateView();
-  </script>
-</body>
-</html>
+  `;
+
+  return /*html*/ `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VSCode Tables</title>
+    <style>${css}</style>
+  </head>
+  <body>
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="container">
+      <div id="table-container">
+        <div class="nodata">Select a table from a category in the sidebar</div>
+      </div>
+    </main>
+    <script>${js}</script>
+  </body>
+  </html>
   `;
 }
+
