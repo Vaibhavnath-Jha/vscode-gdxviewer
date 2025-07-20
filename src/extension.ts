@@ -22,6 +22,17 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       if (pythonPath) {
+        checkPythonLibrary(pythonPath, "gams")
+          .then(() => {
+            // Do nothing if exists
+          })
+          .catch(err => {
+            vscode.window.showWarningMessage(
+              `The Python library "gams" is not installed in the selected Python interpreter.\n` +
+              `Please install it (e.g., using 'pip install gams') and try again.\n\nDetails: ${err.message || err}`
+            );
+          });
+
         execFile(pythonPath, [scriptPath, fileToParse], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
           if (error) {
             vscode.window.showErrorMessage(`Error: ${stderr || error.message}`);
@@ -58,9 +69,24 @@ export function activate(context: vscode.ExtensionContext) {
   );
 }
 
+function checkPythonLibrary(pythonPath: string, libName: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const cmd = [
+      '-c',
+      `import importlib.util; exit(0) if importlib.util.find_spec('${libName}') else exit(1)`
+    ];
+    execFile(pythonPath, cmd, (error) => {
+      if (error) {
+        reject(new Error(`Python library "${libName}" not found at ${pythonPath}`));
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
 function getWebviewContent(data: any): string {
   const dataString = JSON.stringify(data).replace(/</g, '\\u003c');
-  const categoryKeys = Object.keys(data || {});
 
   const css = /*css*/ `
   :root {
@@ -214,7 +240,7 @@ function getWebviewContent(data: any): string {
 
   const js = /*javascript*/ `
   const data = ${dataString};
-    const categories = Object.keys(data);
+    const categories = Object.keys(data || {});
     let expandedCats = {};
     let selectedCat = null;
     let selectedTable = null;
