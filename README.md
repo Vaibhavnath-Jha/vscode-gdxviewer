@@ -8,6 +8,8 @@ The `gdxviewer` renders the content of the GAMS GDX file in VSCode WebView.
 2. User can search for a symbol in the GDX file.
 3. Since `gdxviewer` parses JSON string to display the content in the Webview, values like `Infinity` and `-Infinity` has been replaced with `1e+300` and `1e-300`.
 
+![Demo of gdxviewer](images/gdxviewerUsage.gif)
+
 ## Requirements
 
 The python script that reads the data from the GDX file requires that gams\[transfer] is installed in the provided Python interpreter.
