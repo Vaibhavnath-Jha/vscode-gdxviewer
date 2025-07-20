@@ -224,7 +224,7 @@ function getWebviewContent(data: any): string {
       background: var(--table-row-bg-alt);
     }
     .nodata {
-      margin: 1.7em 1em 0 2.4em;
+      margin: 0 0 1.8em 0;
       color: var(--nodata-fg);
       font-size: 1.13em;
       font-style: italic;
@@ -234,14 +234,72 @@ function getWebviewContent(data: any): string {
       .sidebar { width: 99vw; flex-direction: row; border-bottom: 1px solid var(--table-bg); border-right: none; }
       .container { padding: 1.1em 3vw; }
     }
+    .symbol-search {
+      width: 260px;
+      padding: 0.47em 0.8em;
+      margin: 0 0 1.8em 0;
+      font-size: 1.06em;
+      background: var(--background);
+      border: 1.3px solid var(--table-border);
+      color: var(--container-fg);
+      border-radius: 5px;
+      outline: none;
+      transition: border-color 0.1s;
+      display: block;
+    }
+    .symbol-search:focus {
+      border-color: var(--category-outline);
+    }
+    @media (max-width: 700px) {
+      .symbol-search { width: 98%; max-width: 350px;}
+    }
   `;
 
   const js = /*javascript*/ `
-  const data = ${dataString};
+    const data = ${dataString};
     const categories = Object.keys(data || {});
     let expandedCats = {};
     let selectedCat = null;
     let selectedTable = null;
+
+    function symbolSearch(term) {
+      const search = term.toLowerCase();
+      let found = false;
+      // Reset all expanded categories for clarity
+      expandedCats = {};
+      selectedCat = null;
+      selectedTable = null;
+      for (let cat of categories) {
+        const tablesObj = data[cat];
+        if (typeof tablesObj === "object" && tablesObj !== null) {
+          for (let tname of Object.keys(tablesObj)) {
+            if (tname.toLowerCase() === search) {
+              // Found
+              expandedCats[cat] = true;
+              selectedCat = cat;
+              selectedTable = tname;
+              found = true;
+              break;
+            }
+          }
+        }
+        if (found) break;
+      }
+      if (found) {
+        updateView();
+      } else {
+        // No match, also close sidebar selection
+        expandedCats = {};
+        selectedCat = null;
+        selectedTable = null;
+        updateView("Symbol not found");
+      }
+    }
+
+    function renderSearchInput(currentValue) {
+      // Add top margin only if not first child
+      return \`<input id="symbol-search" type="search" placeholder="Search for a symbol" class="symbol-search" autocomplete="off" value="\${currentValue ? String(currentValue).replace(/"/g, '&quot;') : ""}" />\`;
+    }
 
     function renderSidebar() {
       const sidebar = document.getElementById('sidebar');
@@ -312,14 +370,31 @@ function getWebviewContent(data: any): string {
       return '<div class="nodata">This table has no data.</div>';
     }
 
-    function updateView() {
+    function updateView(message) {
       renderSidebar();
       const container = document.getElementById('table-container');
+
+      // Always put the search at the top
+      let content = renderSearchInput(""); // can pass last term if you wish
+
       if (selectedCat && selectedTable) {
         const td = data[selectedCat]?.[selectedTable];
-        container.innerHTML = renderTable(td) || '<div class="nodata">This table has no data.</div>';
+        content += renderTable(td) || '<div class="nodata">This table has no data.</div>';
       } else {
-        container.innerHTML = '<div class="nodata">Select a table from a category in the sidebar</div>';
+        content += \`<div class="nodata">\${message || 'OR Select a table from a category in the sidebar'}</div>\`;
+      }
+      container.innerHTML = content;
+
+      // Restore focus after rerender
+      const searchInput = document.getElementById('symbol-search');
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            const term = searchInput.value.trim();
+            if (term) symbolSearch(term);
+          }
+        });
       }
     }
 
@@ -362,9 +437,7 @@ function getWebviewContent(data: any): string {
   <body>
     <aside class="sidebar" id="sidebar"></aside>
     <main class="container">
-      <div id="table-container">
-        <div class="nodata">Select a table from a category in the sidebar</div>
-      </div>
+      <div id="table-container"></div>
     </main>
     <script>${js}</script>
   </body>
