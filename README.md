@@ -1,14 +1,14 @@
-# gdxviewer
+# GDXViewer
 This extension renders the GAMS GDX file in VSCode Webview. It executes a Python script in the background using Node's `child_process`. The python interperter, which contains the `gams` library, must be set before using the extension. 
 
 ## Features
-The `gdxviewer` renders the content of the GAMS GDX file in VSCode WebView. 
+Once the Python interpreter's path is set, you can either provide the path to the GDX file or, if the file is already available in the workspace, right-click to bring up the context menu and select "GDX: Display the .gdx file.
 
-1. Simply select a symbol from the sidebar to display its content.
-2. User can search for a symbol in the GDX file.
-3. Since `gdxviewer` parses JSON string to display the content in the Webview, values like `Infinity` and `-Infinity` has been replaced with `1e+300` and `1e-300`.
+1. Select a symbol from the sidebar to display its content.
+2. Search for a symbol in the GDX file.
+3. Since `GDXViewer` parses JSON string to display the content, values like `Infinity` and `-Infinity` has been replaced with `1e+300` and `1e-300`.
 
-![Demo of gdxviewer](images/gdxviewerUsage.gif)
+![Demo of GDXViewer](images/gdxviewerUsage.gif)
 
 ## Requirements
 
@@ -24,4 +24,4 @@ This extension contributes the following settings:
 
 ### 1.0.0
 
-- Initial release of `gdxviewer`.
+- Initial release of `GDXViewer`.
