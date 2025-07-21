@@ -25,3 +25,7 @@ This extension contributes the following settings:
 ### 1.0.0
 
 - Initial release of `GDXViewer`.
+
+### 1.0.1
+
+- Updated README
