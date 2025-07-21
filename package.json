@@ -2,11 +2,12 @@
   "name": "gdxviewer",
   "displayName": "gdxviewer",
   "description": "VSCode extension for previewing GAMS GDX files",
+  "publisher": "VaibhavnathJha",
   "repository": {
     "type": "git",
     "url": "https://github.com/Vaibhavnath-Jha/vscode-gdxviewer.git"
   },
-  "version": "0.0.1",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.102.0"
   },
