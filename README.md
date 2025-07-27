@@ -22,10 +22,17 @@ This extension contributes the following settings:
 
 ## Release Notes
 
-### 1.0.0
+### 1.1.0
 
-- Initial release of `GDXViewer`.
+- Replaced `execFile` with `spawn`, eliminating `maxBuffer` limitations; large GDX files can now be viewed.
+- Fetch symbol data on request
+- File picker dialog box for selecting the GDX File
+- Support for VSCode light themes
 
 ### 1.0.1
 
 - Updated README
+
+### 1.0.0
+
+- Initial release of `GDXViewer`.
