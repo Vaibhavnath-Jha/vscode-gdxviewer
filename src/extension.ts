@@ -1,81 +1,172 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { execFile } from 'child_process';
+import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
+
+// A map to hold the state for each open GDX file view
+interface GdxViewState {
+  panel: vscode.WebviewPanel;
+  // The persistent interactive process, created on the first data request
+  interactiveProcess: ChildProcessWithoutNullStreams | null;
+}
+const gdxViewStates = new Map<string, GdxViewState>();
 
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('gdx.Display', async (resource: vscode.Uri) => {
-      const pythonPath = await vscode.commands.executeCommand<string>(
-        'python.interpreterPath',
-        { workspaceFolder: vscode.workspace.workspaceFolders?.[0] }
-      );
-
-      const scriptPath = path.join(context.extensionPath, 'scripts', 'readgdx.py');
-
       let fileToParse: string | undefined = resource?.fsPath;
       if (!fileToParse) {
-        fileToParse = await vscode.window.showInputBox({ prompt: "Path to .gdx file" });
-        if (!fileToParse) {
-          vscode.window.showWarningMessage('No file path provided.');
-          return;
+        const uris = await vscode.window.showOpenDialog({ canSelectMany: false, openLabel: "Select GDX File" });
+        if (uris && uris.length > 0) {
+          fileToParse = uris[0].fsPath;
         }
       }
 
-      if (pythonPath) {
-        checkPythonLibrary(pythonPath, "gams")
-          .then(() => {
-            // Do nothing if exists
-          })
-          .catch(err => {
-            vscode.window.showWarningMessage(
-              `The Python library "gams" is not installed in the selected Python interpreter.\n` +
-              `Please install it (e.g., using 'pip install gams') and try again.\n\nDetails: ${err.message || err}`
-            );
-          });
-
-        execFile(pythonPath, [scriptPath, fileToParse], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
-          if (error) {
-            vscode.window.showErrorMessage(`Error: ${stderr || error.message}`);
-            return;
-          }
-          let parsedData;
-          try {
-            parsedData = JSON.parse(stdout);
-          } catch {
-            vscode.window.showErrorMessage('Failed to parse Python output as JSON.');
-            return;
-          }
-
-          // Show the webview panel
-          const panel = vscode.window.createWebviewPanel(
-            'parsedDataView',
-            path.basename(fileToParse),
-            vscode.ViewColumn.One,
-            { enableScripts: true }
-          );
-
-          // Passing the data to webview (as JSON string)
-          panel.webview.html = getWebviewContent(parsedData);
-        });
-      } else {
-        vscode.window.showErrorMessage(
-          "Python interpreter is not set. Please select a Python interpreter before running the script."
-        );
-        throw new Error("Python interpreter path is not set.");
+      if (!fileToParse) {
+        vscode.window.showInformationMessage('No GDX file was selected.');
+        return;
       }
+
+      // If a panel for this file already exists, just reveal it.
+      if (gdxViewStates.has(fileToParse)) {
+        gdxViewStates.get(fileToParse)?.panel.reveal(vscode.ViewColumn.One);
+        return;
+      }
+
+      let pythonPath: string;
+      try {
+        pythonPath = await getPythonPath();
+        await checkGAMSpackage(pythonPath, "gams");
+      } catch (err: any) {
+        vscode.window.showErrorMessage(err.message);
+        return;
+      }
+
+      const panel = vscode.window.createWebviewPanel(
+        'gdxDataView',
+        path.basename(fileToParse),
+        vscode.ViewColumn.One,
+        {
+          enableScripts: true,
+          retainContextWhenHidden: true,
+        }
+      );
+
+      panel.webview.html = getWebviewContent("Fetching symbol index...");
+
+      const currentState: GdxViewState = { panel, interactiveProcess: null };
+      gdxViewStates.set(fileToParse, currentState);
+
+      // Fetch symbol names
+      const scriptPath = path.join(context.extensionPath, 'scripts', 'readgdx.py');
+      const indexProcess = spawn(pythonPath, [scriptPath, fileToParse]);
+
+      let stdoutBuffer = '';
+      indexProcess.stdout.on('data', (data) => {
+        stdoutBuffer += data.toString();
+      });
+
+      let stderrBuffer = '';
+      indexProcess.stderr.on('data', (data) => {
+        stderrBuffer += data.toString();
+      });
+
+      indexProcess.on('close', (code) => {
+        if (panel.visible === false) return; // Don't do anything if panel was closed
+        if (code === 0) {
+          try {
+            const indexData = JSON.parse(stdoutBuffer);
+            panel.webview.postMessage({ command: 'initialize', data: indexData });
+          } catch (e: any) {
+            vscode.window.showErrorMessage(`Failed to parse symbol index from Python script. Error: ${e.message}. Output: ${stdoutBuffer}`);
+          }
+        } else {
+          vscode.window.showErrorMessage(`Failed to get symbol index. Python script exited with code ${code}. Stderr: ${stderrBuffer}`);
+        }
+      });
+
+      // Fetch symbol data on request from the webview
+      panel.webview.onDidReceiveMessage(async (message: any) => {
+        if (message.command === 'getSymbol') {
+          const state = gdxViewStates.get(fileToParse!);
+          if (!state) return;
+
+          if (!state.interactiveProcess || state.interactiveProcess.killed) {
+            try {
+              const scriptPath = path.join(context.extensionPath, 'scripts', 'readgdx.py');
+              const newProcess = spawn(pythonPath, [scriptPath, fileToParse!, '--interactive']);
+              state.interactiveProcess = newProcess;
+
+              let buffer = '';
+              newProcess.stdout.on('data', (data) => {
+                buffer += data.toString();
+                let boundary = buffer.indexOf('\n');
+                while (boundary !== -1) {
+                  const messageChunk = buffer.substring(0, boundary);
+                  buffer = buffer.substring(boundary + 1);
+                  try {
+                    const symbolData = JSON.parse(messageChunk);
+                    panel.webview.postMessage({ command: 'displaySymbolData', data: symbolData });
+                  } catch (e: any) {
+                    vscode.window.showErrorMessage(`Failed to parse symbol data: ${e.message}. Raw data: ${messageChunk}`);
+                  }
+                  boundary = buffer.indexOf('\n');
+                }
+              });
+
+              newProcess.stderr.on('data', (data) => {
+                vscode.window.showErrorMessage(`Error from GDX script: ${data}`);
+              });
+
+              newProcess.on('close', () => {
+                if (gdxViewStates.has(fileToParse!)) {
+                  gdxViewStates.get(fileToParse!)!.interactiveProcess = null;
+                }
+              });
+            } catch (err: any) {
+              vscode.window.showErrorMessage(err.message);
+              return;
+            }
+          }
+          // Whether the process is new or existing, send it the symbol name
+          state.interactiveProcess.stdin.write(`${message.symbolName}\n`);
+        }
+      });
+
+      panel.onDidDispose(() => {
+        const state = gdxViewStates.get(fileToParse!);
+        if (state && state.interactiveProcess) {
+          state.interactiveProcess.kill();
+        }
+        gdxViewStates.delete(fileToParse!);
+      }, null, context.subscriptions);
     })
   );
 }
 
-function checkPythonLibrary(pythonPath: string, libName: string): Promise<void> {
+async function getPythonPath(): Promise<string> {
+  const pythonExtension = vscode.extensions.getExtension('ms-python.python');
+  if (!pythonExtension) {
+    throw new Error("The Python extension ('ms-python.python') is not installed or enabled. Please install it to proceed.");
+  }
+  if (!pythonExtension.isActive) {
+    await pythonExtension.activate();
+  }
+
+  const pythonPath = await vscode.commands.executeCommand<string>(
+    'python.interpreterPath', { workspaceFolder: vscode.workspace.workspaceFolders?.[0] }
+  );
+  if (pythonPath) {
+    return pythonPath;
+  }
+  throw new Error("Python interpreter is not set. Please select a Python interpreter using the 'Python: Select Interpreter' command.");
+}
+
+function checkGAMSpackage(pythonPath: string, libName: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const cmd = [
-      '-c',
-      `import importlib.util; exit(0) if importlib.util.find_spec('${libName}') else exit(1)`
-    ];
-    execFile(pythonPath, cmd, (error) => {
-      if (error) {
-        reject(new Error(`Python library "${libName}" not found at ${pythonPath}`));
+    const cmd = ['-c', `import importlib.util; exit(0) if importlib.util.find_spec('${libName}') else exit(1)`];
+    spawn(pythonPath, cmd).on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`Required Python library not found: '${libName}'. Please install it (e.g., 'pip install ${libName}') in the selected interpreter.`));
       } else {
         resolve();
       }
@@ -83,11 +174,14 @@ function checkPythonLibrary(pythonPath: string, libName: string): Promise<void> 
   });
 }
 
-function getWebviewContent(data: any): string {
-  const dataString = JSON.stringify(data).replace(/</g, '\\u003c');
 
+function getWebviewContent(message: string = 'Select a symbol from the sidebar to view its data.'): string {
   const css = /*css*/ `
   :root {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+    }
+    body.vscode-dark {
       --background: var(--vscode-editor-background, #1e1e1e);
       --sidebar-bg: var(--vscode-sideBar-background, #191d20);
       --sidebar-border: var(--vscode-sideBar-border, #22252b);
@@ -107,9 +201,47 @@ function getWebviewContent(data: any): string {
       --container-fg: var(--vscode-editor-foreground, #e7e7e7);
       --none-li-fg: var(--vscode-disabledForeground, #888ea8);
     }
-
+    body.vscode-light {
+      --background: var(--vscode-editor-background, #fff);
+      --sidebar-bg: var(--vscode-sideBar-background, #f7f7f7);
+      --sidebar-border: var(--vscode-sideBar-border, #ddd);
+      --sidebar-fg: var(--vscode-sideBar-foreground, #222); /* Corrected font color source */
+      --category-bg-selected: var(--vscode-list-activeSelectionBackground, #e6f0ff);
+      --category-fg-selected: var(--vscode-list-activeSelectionForeground, #222);
+      --category-outline: var(--vscode-focusBorder, #3399ff);
+      --cat-icon-fg: var(--vscode-foreground, #222);
+      --table-bg: var(--vscode-editorGroupHeader-tabsBackground, #fff);
+      --table-border: var(--vscode-input-border, #d0d0d0);
+      --table-header-bg: var(--vscode-tab-activeBackground, #e8eef6);
+      --table-header-fg: var(--vscode-tab-activeForeground, #222);
+      --table-row-bg-alt: var(--vscode-list-inactiveSelectionBackground, #f3f6fa);
+      --nodata-fg: var(--vscode-descriptionForeground, #888);
+      --table-li-hover-bg: var(--vscode-list-hoverBackground, #3399ff33);
+      --table-li-hover-fg: var(--vscode-list-hoverForeground, #222);
+      --container-fg: var(--vscode-editor-foreground, #222);
+      --none-li-fg: var(--vscode-disabledForeground, #bbb);
+    }
+    body.vscode-high-contrast {
+      --background: var(--vscode-editor-background, #000);
+      --sidebar-bg: var(--vscode-sideBar-background, #000);
+      --sidebar-border: var(--vscode-sideBar-border, #fff);
+      --sidebar-fg: var(--vscode-sideBar-foreground, #fff);
+      --category-bg-selected: var(--vscode-list-activeSelectionBackground, #000);
+      --category-fg-selected: var(--vscode-list-activeSelectionForeground, #fff);
+      --category-outline: var(--vscode-focusBorder, #f38518);
+      --cat-icon-fg: var(--vscode-foreground, #fff);
+      --table-bg: var(--vscode-editorGroupHeader-tabsBackground, #000);
+      --table-border: var(--vscode-input-border, #fff);
+      --table-header-bg: var(--vscode-tab-activeBackground, #000);
+      --table-header-fg: var(--vscode-tab-activeForeground, #fff);
+      --table-row-bg-alt: var(--vscode-list-inactiveSelectionBackground, #000);
+      --nodata-fg: var(--vscode-descriptionForeground, #fff);
+      --table-li-hover-bg: var(--vscode-list-hoverBackground, #000);
+      --table-li-hover-fg: var(--vscode-list-hoverForeground, #fff);
+      --container-fg: var(--vscode-editor-foreground, #fff);
+      --none-li-fg: var(--vscode-disabledForeground, #fff);
+    }
     body {
-      font-family: system-ui, sans-serif;
       margin: 0;
       display: flex;
       height: 100vh;
@@ -233,6 +365,7 @@ function getWebviewContent(data: any): string {
       body { flex-direction: column; }
       .sidebar { width: 99vw; flex-direction: row; border-bottom: 1px solid var(--table-bg); border-right: none; }
       .container { padding: 1.1em 3vw; }
+      .symbol-search { width: 98%; max-width: 350px;}
     }
     .symbol-search {
       width: 260px;
@@ -250,14 +383,13 @@ function getWebviewContent(data: any): string {
     .symbol-search:focus {
       border-color: var(--category-outline);
     }
-    @media (max-width: 700px) {
-      .symbol-search { width: 98%; max-width: 350px;}
-    }
   `;
 
   const js = /*javascript*/ `
-    const data = ${dataString};
-    const categories = Object.keys(data || {});
+    const vscode = acquireVsCodeApi();
+    let symbolIndex = {};
+    let symbolDataCache = {}; // Cache for loaded symbol data
+    let categories = [];
     let expandedCats = {};
     let selectedCat = null;
     let selectedTable = null;
@@ -265,62 +397,49 @@ function getWebviewContent(data: any): string {
     function symbolSearch(term) {
       const search = term.toLowerCase();
       let found = false;
-      // Reset all expanded categories for clarity
       expandedCats = {};
       selectedCat = null;
       selectedTable = null;
+
       for (let cat of categories) {
-        const tablesObj = data[cat];
-        if (typeof tablesObj === "object" && tablesObj !== null) {
-          for (let tname of Object.keys(tablesObj)) {
-            if (tname.toLowerCase() === search) {
-              // Found
-              expandedCats[cat] = true;
-              selectedCat = cat;
-              selectedTable = tname;
-              found = true;
-              break;
-            }
+        const tables = symbolIndex[cat] || [];
+        for (let tname of tables) {
+          if (tname.toLowerCase() === search) {
+            expandedCats[cat] = true;
+            selectedCat = cat;
+            selectedTable = tname;
+            found = true;
+            break;
           }
         }
         if (found) break;
       }
       if (found) {
-        updateView();
+        // Check cache before fetching
+        if (symbolDataCache[selectedTable]) {
+            updateView(symbolDataCache[selectedTable]);
+        } else {
+            vscode.postMessage({ command: 'getSymbol', symbolName: selectedTable });
+            updateView('Loading data...');
+        }
       } else {
-        // No match, also close sidebar selection
-        expandedCats = {};
-        selectedCat = null;
-        selectedTable = null;
         updateView("Symbol not found");
       }
-    }
-
-    function renderSearchInput(currentValue) {
-      // Add top margin only if not first child
-      return \`<input id="symbol-search" type="search" placeholder="Search for a symbol" class="symbol-search" autocomplete="off" value="\${currentValue ? String(currentValue).replace(/"/g, '&quot;') : ""}" />\`;
     }
 
     function renderSidebar() {
       const sidebar = document.getElementById('sidebar');
       sidebar.innerHTML = '';
       categories.forEach(cat => {
-        const tablesObj = data[cat];
+        const tables = symbolIndex[cat] || [];
         const catBtn = document.createElement('button');
-        catBtn.className = 'category' +
-          (expandedCats[cat] ? ' expanded' : '') +
-          (selectedCat === cat ? ' selected' : '');
-        catBtn.setAttribute('tabindex', '0');
+        catBtn.className = 'category' + (expandedCats[cat] ? ' expanded' : '') + (selectedCat === cat ? ' selected' : '');
         catBtn.dataset.cat = cat;
-        catBtn.innerHTML = \`
-          <span>\${cat}</span>
-          <span class="cat-icon\${expandedCats[cat] ? ' expanded' : ''}">&#9654;</span>
-        \`;
-
+        catBtn.innerHTML = \`<span>\${cat}</span><span class="cat-icon\${expandedCats[cat] ? ' expanded' : ''}">&#9654;</span>\`;
         sidebar.appendChild(catBtn);
 
         if (expandedCats[cat]) {
-          if (!tablesObj || (typeof tablesObj === "object" && Object.keys(tablesObj).length === 0)) {
+          if (tables.length === 0) {
             const li = document.createElement('div');
             li.className = 'none-li';
             li.textContent = 'None';
@@ -328,10 +447,9 @@ function getWebviewContent(data: any): string {
           } else {
             const list = document.createElement('ul');
             list.className = 'tables-list';
-            Object.keys(tablesObj).forEach(tname => {
+            tables.forEach(tname => {
               const tli = document.createElement('li');
-              tli.className = 'table-li' +
-                ((selectedCat === cat && selectedTable === tname) ? ' selected' : '');
+              tli.className = 'table-li' + ((selectedCat === cat && selectedTable === tname) ? ' selected' : '');
               tli.textContent = tname;
               tli.dataset.cat = cat;
               tli.dataset.tname = tname;
@@ -344,48 +462,29 @@ function getWebviewContent(data: any): string {
     }
 
     function renderTable(obj) {
-      if (!obj) return '';
-      // Array of objects:
+      if (!obj || (Array.isArray(obj) && obj.length === 0)) {
+        return '<div class="nodata">This symbol has no data records.</div>';
+      }
       if (Array.isArray(obj) && obj.length && typeof obj[0] === 'object') {
         const columns = Array.from(new Set(obj.flatMap(o => Object.keys(o))));
-        let thead = '<tr>' + columns.map(col => '<th>' + col + '</th>').join('') + '</tr>';
-        let tbody = obj.map(row =>
-          '<tr>' + columns.map(col => '<td>' + (row[col] ?? "") + '</td>').join('') + '</tr>'
-        ).join('');
-        return '<table><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
+        let thead = '<tr>' + columns.map(col => \`<th>\${col}</th>\`).join('') + '</tr>';
+        let tbody = obj.map(row => '<tr>' + columns.map(col => \`<td>\${row[col] ?? ""}</td>\`).join('') + '</tr>').join('');
+        return \`<table><thead>\${thead}</thead><tbody>\${tbody}</tbody></table>\`;
       }
-      // Object of arrays:
-      if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
-        const columns = Object.keys(obj);
-        const length = obj[columns[0]]?.length ?? 0;
-        if (columns.every(k => Array.isArray(obj[k]) && obj[k].length === length)) {
-          let thead = '<tr>' + columns.map(col => '<th>' + col + '</th>').join('') + '</tr>';
-          let tbody = '';
-          for (let i = 0; i < length; ++i)
-            tbody += '<tr>' + columns.map(k => '<td>' + (obj[k][i] ?? "") + '</td>').join('') + '</tr>';
-          return '<table><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
-        }
-      }
-      // Fallback
-      return '<div class="nodata">This table has no data.</div>';
+      return '<div class="nodata">Data is not in a recognizable table format.</div>';
     }
 
-    function updateView(message) {
+    function updateView(content) {
       renderSidebar();
       const container = document.getElementById('table-container');
-
-      // Always put the search at the top
-      let content = renderSearchInput(""); // can pass last term if you wish
-
-      if (selectedCat && selectedTable) {
-        const td = data[selectedCat]?.[selectedTable];
-        content += renderTable(td) || '<div class="nodata">This table has no data.</div>';
-      } else {
-        content += \`<div class="nodata">\${message || 'OR Select a table from a category in the sidebar'}</div>\`;
+      let searchInputHTML = \`<input id="symbol-search" type="search" placeholder="Search for a symbol" class="symbol-search" autocomplete="off" />\`;
+      
+      if (typeof content === 'string') {
+        container.innerHTML = searchInputHTML + \`<div class="nodata">\${content}</div>\`;
+      } else if (typeof content === 'object') {
+        container.innerHTML = searchInputHTML + renderTable(content);
       }
-      container.innerHTML = content;
 
-      // Restore focus after rerender
       const searchInput = document.getElementById('symbol-search');
       if (searchInput) {
         searchInput.focus();
@@ -398,31 +497,50 @@ function getWebviewContent(data: any): string {
       }
     }
 
+    // Handle messages from the extension
+    window.addEventListener('message', event => {
+      const message = event.data;
+      switch (message.command) {
+        case 'initialize':
+          symbolIndex = message.data;
+          categories = Object.keys(symbolIndex || {});
+          updateView('Select a symbol from the sidebar to view its data.');
+          break;
+        case 'displaySymbolData':
+          // When data is received, cache it and then display it
+          if (selectedTable) {
+            symbolDataCache[selectedTable] = message.data;
+          }
+          updateView(message.data);
+          break;
+      }
+    });
+
     // Handle sidebar clicks
     document.addEventListener('click', function(e) {
-      if (e.target.classList.contains('category')) {
-        const cat = e.target.dataset.cat;
+      const target = e.target;
+      if (target.classList.contains('category')) {
+        const cat = target.dataset.cat;
         expandedCats[cat] = !expandedCats[cat];
         selectedCat = cat;
         selectedTable = null;
-        updateView();
-      } else if (e.target.classList.contains('table-li')) {
-        selectedCat = e.target.dataset.cat;
-        selectedTable = e.target.dataset.tname;
-        updateView();
+        updateView('Select a symbol from this category.');
+      } else if (target.classList.contains('table-li')) {
+        selectedCat = target.dataset.cat;
+        selectedTable = target.dataset.tname;
+        
+        // Check cache first
+        if (symbolDataCache[selectedTable]) {
+            updateView(symbolDataCache[selectedTable]);
+        } else {
+            // Not in cache, so request data from the extension
+            vscode.postMessage({ command: 'getSymbol', symbolName: selectedTable });
+            updateView('Loading data...');
+        }
       }
     });
 
-    // Keyboard accessibility for categories
-    document.addEventListener('keydown', function(e) {
-      if (e.target.classList.contains('category') && (e.key === 'Enter' || e.key === ' ')) {
-        e.preventDefault();
-        e.target.click();
-      }
-    });
-
-    // Initial render:
-    updateView();
+    updateView("${message}");
   `;
 
   return /*html*/ `
@@ -431,7 +549,7 @@ function getWebviewContent(data: any): string {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VSCode Tables</title>
+    <title>GDX Viewer</title>
     <style>${css}</style>
   </head>
   <body>
@@ -444,4 +562,3 @@ function getWebviewContent(data: any): string {
   </html>
   `;
 }
-
