@@ -2,7 +2,7 @@
 This extension renders the GAMS GDX file in VSCode Webview. It executes a Python script in the background using Node's `child_process`. The python interperter, which contains the `gams` library, must be set before using the extension. 
 
 ## Features
-Once the Python interpreter's path is set, you can either provide the path to the GDX file or, if the file is already available in the workspace, right-click to bring up the context menu and select "GDX: Display the .gdx file.
+Once the Python interpreter's path is set, you can either provide the path to the GDX file or, if the file is already available in the workspace, right-click to bring up the context menu and select "GDX: Display the .gdx file."
 
 1. Select a symbol from the sidebar to display its content.
 2. Search for a symbol in the GDX file.
