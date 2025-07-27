@@ -22,6 +22,10 @@ This extension contributes the following settings:
 
 ## Release Notes
 
+### 1.1.1
+
+- Refactor javascript and css into distinct files for maintainability
+
 ### 1.1.0
 
 - Replaced `execFile` with `spawn`, eliminating `maxBuffer` limitations; large GDX files can now be viewed.

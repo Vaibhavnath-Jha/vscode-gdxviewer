@@ -4,6 +4,15 @@ All notable changes to the `GDXViewer` extension will be documented in this file
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+- Backend pagination for large symbols
+
+
+## [1.1.1] - 28.07.2025
+
+- Refactor javascript and css into distinct files for maintainability
+
 ## [1.1.0] - 27.07.2025
 
 ### Added
