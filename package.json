@@ -7,12 +7,15 @@
     "type": "git",
     "url": "https://github.com/Vaibhavnath-Jha/vscode-gdxviewer.git"
   },
-  "version": "1.1.1",
+  "version": "1.2.0",
   "engines": {
     "vscode": "^1.102.0"
   },
   "categories": [
     "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:gdx"
   ],
   "keywords": [
     "GAMS",
@@ -20,21 +23,36 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "languages": [
+      {
+        "id": "gdx",
+        "extensions": [
+          ".gdx"
+        ]
+      }
+    ],
     "commands": [
       {
         "command": "gdx.Display",
-        "title": "GDX: Display the .gdx file"
+        "title": "GDX Viewer: Display the .gdx file"
+      },
+      {
+        "command": "gdx.initializeDevContainer",
+        "title": "GDX Viewer: Create Recommended Dev Container File"
       }
     ],
-    "menus": {
-      "explorer/context": [
-        {
-          "when": "resourceExtname == .gdx",
-          "command": "gdx.Display",
-          "group": "navigation"
-        }
-      ]
-    }
+    "customEditors": [
+      {
+        "viewType": "gdx.Display",
+        "displayName": "GDX Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.gdx"
+          }
+        ],
+        "priority": "default"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -45,14 +63,14 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.102.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/vscode": "^1.102.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
-    "eslint": "^9.25.1",
-    "typescript": "^5.8.3",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.25.1",
+    "typescript": "^5.8.3"
   }
 }

@@ -1,0 +1,2 @@
+gamsapi[transfer]>=50.1.0
+gamspy_base>=50.1.0

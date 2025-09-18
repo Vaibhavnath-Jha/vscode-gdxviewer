@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Backend pagination for large symbols
 
+## [1.2.0] - 17.09.2025
+
+- Added support for Remote VS Code instance
+- Added `CustomEditor` for better UX.
+- Selecting the gdx file now directly opens the view, if `GDX Viewer` is set as the default editor.
 
 ## [1.1.1] - 28.07.2025
 

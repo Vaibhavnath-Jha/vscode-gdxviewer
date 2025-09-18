@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import importlib.util
+import os
+import shutil
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -32,11 +35,23 @@ if __name__ == "__main__":
     is_interactive = "--interactive" in sys.argv
     gdx_file_path_arg = sys.argv[1] if len(sys.argv) > 1 else None
     if not gdx_file_path_arg:
-        print("No file path provided.", file=sys.stderr)
+        print("No file path provided.", file=sys.stderr, flush=True)
         sys.exit(1)
 
     filepath = sys.argv[1]
-    m = gt.Container(filepath)
+
+    gams_exec_path = shutil.which("gams")
+    spec = importlib.util.find_spec("gamspy_base")
+    if gams_exec_path:
+        sys_dir = os.path.dirname(gams_exec_path)
+    elif spec and spec.origin:
+        sys_dir = os.path.dirname(spec.origin)
+    else:
+        ### This is a sanity check, the checkPrerequisites function in pythonUtils.ts must have already checked these requirements.
+        print("Neither >gams< nor >gamspy_base< is available; try using the extension within the VS Code devcontainer.\n", file=sys.stderr, flush=True)
+        sys.exit(1)
+
+    m = gt.Container(filepath, system_directory=sys_dir)
 
     list_of_symbols = m.getSymbols()
 
