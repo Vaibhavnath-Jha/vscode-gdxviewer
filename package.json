@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/Vaibhavnath-Jha/vscode-gdxviewer.git"
   },
-  "version": "1.2.0",
+  "version": "1.2.1",
   "engines": {
     "vscode": "^1.102.0"
   },
