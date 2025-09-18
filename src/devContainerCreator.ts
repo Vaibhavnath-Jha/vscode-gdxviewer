@@ -37,7 +37,7 @@ export async function createDevContainerFile() {
 	const devContainerConfig = {
 		"name": "Python DevContainer",
 		"image": "mcr.microsoft.com/devcontainers/python:3.11",
-		"postCreateCommand": "python3 -m venv .venv && .venv/bin/pip install gamsapi[transfer]>=50.1.0 gamspy_base>=50.1.0",
+		"postCreateCommand": "python3 -m venv .venv && echo '*' > .venv/.gitignore && .venv/bin/pip install 'gamsapi[transfer]>=50.1.0' 'gamspy_base>=50.1.0'",
 		"customizations": {
 			"vscode": {
 				"settings": {

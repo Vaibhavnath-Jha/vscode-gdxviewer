@@ -31,6 +31,10 @@ This extension contributes the following settings:
 
 ## Release Notes
 
+### 1.2.1
+
+- Fixed `postCreateCommand` to not pipe the output.
+
 ### 1.2.0
 
 - Added support for Remote VS Code instance
@@ -51,7 +55,3 @@ This extension contributes the following settings:
 ### 1.0.1
 
 - Updated README
-
-### 1.0.0
-
-- Initial release of `GDXViewer`.
