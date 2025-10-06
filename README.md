@@ -31,6 +31,13 @@ This extension contributes the following settings:
 
 ## Release Notes
 
+### 1.3.0
+
+- Backend pagination for symbols.
+- Use Tanstack table (React app) for *UI*.
+- Support front-end pagination.
+- Use `python.defaultInterpreterPath` instead of `python.pythonPath` in devcontainers.
+
 ### 1.2.1
 
 - Fixed `postCreateCommand` to not pipe the output.
