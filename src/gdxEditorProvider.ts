@@ -44,7 +44,7 @@ export class GdxEditorProvider implements vscode.CustomEditorProvider<GdxDocumen
     // 1. Configure the Webview
     webviewPanel.webview.options = {
       enableScripts: true,
-      localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'webview')]
+      localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'webview-ui')]
     };
     webviewPanel.webview.html = getWebviewContent(webviewPanel.webview, this.context.extensionUri);
 
@@ -98,9 +98,10 @@ export class GdxEditorProvider implements vscode.CustomEditorProvider<GdxDocumen
         if (!state.interactiveProcess || state.interactiveProcess.killed) {
           state.interactiveProcess = this.startInteractiveProcess(fileToParse, scriptPath, pythonPath, webviewPanel);
         }
-        
+
         // Send the requested symbol name to the python process
-        state.interactiveProcess.stdin.write(`${message.symbolName}\n`);
+        let params = { "symbolName": message.symbolName, "page": message.page };
+        state.interactiveProcess.stdin.write(JSON.stringify(params) + "\n");
       }
     });
   }
@@ -121,8 +122,12 @@ export class GdxEditorProvider implements vscode.CustomEditorProvider<GdxDocumen
         const messageChunk = buffer.substring(0, boundary);
         buffer = buffer.substring(boundary + 1);
         try {
-          const symbolData = JSON.parse(messageChunk);
-          webviewPanel.webview.postMessage({ command: 'displaySymbolData', data: symbolData });
+          const parsedOutput = JSON.parse(messageChunk);
+          webviewPanel.webview.postMessage({
+            command: 'displaySymbolData',
+            data: parsedOutput.data,
+            totalRecords: parsedOutput.total_records
+          });
         } catch (e: any) {
           console.error(`Failed to parse symbol data: ${e.message}. Raw: ${messageChunk}`);
         }
