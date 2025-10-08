@@ -13,7 +13,7 @@
             },
             "extensions": [
                 "VaibhavnathJha.gdxviewer",
-                "/tmp/gams-ide.vsix"
+                "/home/vscode/extensions/gams-ide.vsix"
             ]
         }
     },

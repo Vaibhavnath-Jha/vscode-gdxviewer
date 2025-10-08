@@ -6,3 +6,4 @@ node_modules
 *.mp4
 .venv/
 .ruff_cache/
+test.*
