@@ -8,6 +8,6 @@
 	},
 	// Turn off tsc task auto detection since we have the necessary tasks as npm scripts
 	"typescript.tsc.autoDetect": "off",
-	"gamsIde.gamsExecutable": "/workspaces/gdxviewer/.venv/lib/python3.11/site-packages/gamspy_base/gams",
+	"gamsIde.gamsExecutable": "/workspaces/vscode-gdxviewer/.venv/lib/python3.11/site-packages/gamspy_base/gams",
 	"gamsIde.parseGamsData": true
 }
