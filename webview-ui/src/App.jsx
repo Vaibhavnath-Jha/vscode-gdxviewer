@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     useReactTable,
     getCoreRowModel,
@@ -6,27 +7,50 @@ import {
 } from '@tanstack/react-table';
 import Sidebar from './components/Sidebar';
 import Pagination from './components/Pagination';
+import ColumnToggle from './components/ColumnToggle';
 import './App.css';
 
 const vscode = acquireVsCodeApi();
 
+function fetchSymbolData(params) {
+    return new Promise((resolve, reject) => {
+        const handleResponse = (event) => {
+            const message = event.data;
+            if (message.command === 'displaySymbolData') {
+                window.removeEventListener('message', handleResponse);
+                resolve(message);
+            }
+        };
+        window.addEventListener('message', handleResponse);
+        vscode.postMessage({ command: 'getSymbol', ...params });
+    });
+}
+
+
 function App() {
-    // --- State Management ---
     const [symbolIndex, setSymbolIndex] = useState({});
     const [categories, setCategories] = useState([]);
     const [expandedCats, setExpandedCats] = useState({});
     const [selectedTable, setSelectedTable] = useState(null);
-    const [tableData, setTableData] = useState([]);
-    const [totalRecords, setTotalRecords] = useState(0);
-    const [isLoading, setIsLoading] = useState(true);
-    const [statusMessage, setStatusMessage] = useState('Initializing...');
-    const [symbolDataCache, setSymbolDataCache] = useState({});
-    const [pagination, setPagination] = useState({
-        pageIndex: 0,
-        pageSize: 100,
-    });
-    const [goToPageValue, setGoToPageValue] = useState(1);
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 100 });
+    const [columnVisibility, setColumnVisibility] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
+    const [goToPageValue, setGoToPageValue] = useState(1);
+    const [isInitializing, setIsInitializing] = useState(true);
+
+    const queryClient = useQueryClient();
+
+    const { data: tableQueryResult, isLoading, isError, isFetching } = useQuery({
+        queryKey: ['symbolData', selectedTable, pagination.pageIndex, pagination.pageSize],
+        queryFn: () => fetchSymbolData({
+            symbolName: selectedTable,
+            page: pagination.pageIndex + 1,
+            rows: pagination.pageSize,
+        }),
+        enabled: !!selectedTable,
+        keepPreviousData: true,
+        staleTime: Infinity, // data is always fresh until the gdx file changes, then the cache is invalidated.
+    });
 
     // --- VS Code Communication ---
     useEffect(() => {
@@ -36,25 +60,12 @@ function App() {
                 case 'initialize':
                     setSymbolIndex(message.data || {});
                     setCategories(Object.keys(message.data || {}));
-                    setIsLoading(false);
-                    setStatusMessage('Select a symbol or use the search bar.');
+                    setSelectedTable(null);
+                    setExpandedCats({});
+                    setIsInitializing(false);
                     break;
-                case 'displaySymbolData':
-                    const receivedData = message.data || [];
-                    setTableData(receivedData);
-                    setTotalRecords(message.totalRecords || 0);
-                    if (receivedData.length === 0) setStatusMessage("No data available for this symbol");
-                    if (selectedTable) {
-                        setSymbolDataCache(prevCache => ({
-                            ...prevCache,
-                            [selectedTable]: {
-                                ...prevCache[selectedTable],
-                                [pagination.pageIndex + 1]: message.data,
-                                totalRecords: message.totalRecords,
-                            }
-                        }));
-                    }
-                    setIsLoading(false);
+                case 'fileUpdated':
+                    queryClient.invalidateQueries();
                     break;
             }
         };
@@ -62,35 +73,14 @@ function App() {
         window.addEventListener('message', handleMessage);
         vscode.postMessage({ command: 'initialize' });
         return () => window.removeEventListener('message', handleMessage);
-    }, [selectedTable, pagination.pageIndex]);
-
-    useEffect(() => {
-        if (!selectedTable) return;
-        const cache = symbolDataCache[selectedTable];
-        if (cache && cache[pagination.pageIndex + 1]) {
-            setTableData(cache[pagination.pageIndex + 1]);
-            setTotalRecords(cache.totalRecords);
-            setIsLoading(false);
-            return; // Data found in cache, no need to fetch
-        }
-        setIsLoading(true);
-        setStatusMessage('Loading data...');
-        vscode.postMessage({
-            command: 'getSymbol',
-            symbolName: selectedTable,
-            page: pagination.pageIndex + 1,
-        });
-    }, [selectedTable, pagination, symbolDataCache]);
+    }, [queryClient]);
 
     useEffect(() => {
         setGoToPageValue(pagination.pageIndex + 1);
     }, [pagination.pageIndex]);
 
-    // --- Live Search Filtering Logic ---
     const filteredSymbolIndex = useMemo(() => {
-        if (!searchTerm) {
-            return symbolIndex;
-        }
+        if (!searchTerm) return symbolIndex;
         const newExpandedCats = {};
         const filtered = {};
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
@@ -99,7 +89,6 @@ function App() {
             const matchingSymbols = (symbolIndex[cat] || []).filter(tname =>
                 tname.toLowerCase().includes(lowerCaseSearchTerm)
             );
-
             if (matchingSymbols.length > 0) {
                 filtered[cat] = matchingSymbols;
                 newExpandedCats[cat] = true;
@@ -108,13 +97,14 @@ function App() {
         setExpandedCats(newExpandedCats);
         return filtered;
     }, [searchTerm, symbolIndex, categories]);
-
     const categoriesToRender = searchTerm ? Object.keys(filteredSymbolIndex) : categories;
 
+    // --- Event Handlers ---
     const handleSelectTable = (tableName, category) => {
         setExpandedCats({ [category]: true });
         setPagination(p => ({ ...p, pageIndex: 0 }));
         setSelectedTable(tableName);
+        setColumnVisibility({});
     };
 
     const handleToggleCategory = (cat) => {
@@ -128,26 +118,41 @@ function App() {
         }
     };
 
-    // --- TanStack Table Setup ---
+    const handlePageSizeChange = (newPageSize) => {
+        setPagination(p => ({ ...p, pageIndex: 0, pageSize: newPageSize }));
+    };
+
+    const tableData = useMemo(() => tableQueryResult?.data || [], [tableQueryResult]);
+    const totalRecords = tableQueryResult?.totalRecords || 0;
+    const symText = tableQueryResult?.symText;
+
     const columns = useMemo(() => {
         if (tableData.length === 0) return [];
         const keys = Object.keys(tableData[0]);
-        return keys.map(key => ({
-            accessorKey: key,
-            header: () => <span>{key}</span>,
-            cell: info => info.getValue(),
-        }));
+        return keys.map(key => ({ accessorKey: key, header: key, cell: info => info.getValue() }));
     }, [tableData]);
 
     const table = useReactTable({
         data: tableData,
         columns,
-        state: { pagination },
+        state: { pagination, columnVisibility },
         onPaginationChange: setPagination,
+        onColumnVisibilityChange: setColumnVisibility,
         pageCount: Math.ceil(totalRecords / pagination.pageSize) || -1,
         manualPagination: true,
         getCoreRowModel: getCoreRowModel(),
     });
+
+    const showTable = !isLoading && !isError && selectedTable && tableData.length > 0;
+
+    if (isInitializing) {
+        return (
+            <div className="loader-container">
+                <div className="loader"></div>
+                <p>Loading Symbols...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="app-layout">
@@ -162,26 +167,49 @@ function App() {
                 onSelectTable={handleSelectTable}
             />
             <div className="container">
-                {isLoading || tableData.length === 0 && selectedTable ? (
-                    <div className="nodata">{statusMessage}</div>
-                ) : (
+                {!selectedTable ? (
+                    <div className="nodata">Select a symbol to view its data.</div>
+                ) : isLoading ? (
+                    <div className="table-loader-container">
+                        <div className="loader"></div>
+                        <p>Loading Data...</p>
+                    </div>
+                ) : isError ? (
+                    <div className="nodata">Error fetching data.</div>
+                ) : showTable ? (
                     <>
-                        <div className="table-container">
-                            <div className="table-header-info">
+                        <div className="table-header-info">
+                            <div className="symbol-tooltip-container">
                                 <span className="symbol-span"><strong>{selectedTable}</strong></span>
+                                {(symText) && (
+                                    <div className="symbol-tooltip">
+                                        {symText && <div>{symText}</div>}
+                                    </div>
+                                )}
                             </div>
+                            <ColumnToggle table={table} />
+                        </div>
+                        <div className="table-container">
                             <table>
                                 <thead>
                                     {table.getHeaderGroups().map(headerGroup => (
                                         <tr key={headerGroup.id}>
-                                            {headerGroup.headers.map(header => <th key={header.id}>{flexRender(header.column.columnDef.header, header.getContext())}</th>)}
+                                            {headerGroup.headers.map(header => (
+                                                <th key={header.id}>
+                                                    {flexRender(header.column.columnDef.header, header.getContext())}
+                                                </th>
+                                            ))}
                                         </tr>
                                     ))}
                                 </thead>
                                 <tbody>
                                     {table.getRowModel().rows.map(row => (
                                         <tr key={row.id}>
-                                            {row.getVisibleCells().map(cell => <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>)}
+                                            {row.getVisibleCells().map(cell => (
+                                                <td key={cell.id}>
+                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                </td>
+                                            ))}
                                         </tr>
                                     ))}
                                 </tbody>
@@ -193,8 +221,11 @@ function App() {
                             goToPageValue={goToPageValue}
                             onGoToPageValueChange={setGoToPageValue}
                             onGoToPage={handleGoToPage}
+                            onPageSizeChange={handlePageSizeChange}
                         />
                     </>
+                ) : (
+                    <div className="nodata">No data available for <strong>{selectedTable}</strong>.</div>
                 )}
             </div>
         </div>

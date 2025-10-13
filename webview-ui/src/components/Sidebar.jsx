@@ -1,5 +1,6 @@
 import React from 'react';
 import Search from './Search';
+import './styles/Sidebar.css';
 
 function Sidebar({
     searchTerm,

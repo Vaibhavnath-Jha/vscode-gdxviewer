@@ -1,4 +1,5 @@
 import React from 'react';
+import './styles/Search.css';
 
 /**
  * A controlled input component for live searching symbols.

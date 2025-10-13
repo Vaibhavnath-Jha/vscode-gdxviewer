@@ -6,16 +6,6 @@
     min-width: 600px;
 }
 
-.sidebar {
-    width: 240px;
-    min-width: 240px;
-    background: var(--sidebar-bg);
-    color: var(--sidebar-fg);
-    border-right: 1px solid var(--sidebar-border);
-    display: flex;
-    flex-direction: column;
-}
-
 .container {
     flex: 1;
     display: flex;
@@ -31,150 +21,18 @@
     border-radius: 6px;
 }
 
-.symbol-search-container {
-    display: flex;
-    justify-content: center;
-    padding: 1.2em 0.7em 1em 0.7em;
-}
-
-.symbol-search {
-    width: 95%;
-    padding: 0.4em 0.6em;
-    font-size: 1em;
-    background: var(--background);
-    border: 1px solid var(--table-border);
-    color: var(--container-fg);
-    border-radius: 5px;
-    outline: none;
-    transition: border-color 0.1s;
-}
-
-.symbol-search:focus {
-    border-color: var(--category-outline);
-}
-
-.category-list-container {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0.7em;
-    display: flex;
-    flex-direction: column;
-    gap: 0.2em;
-}
-
-.category {
-    user-select: none;
-    padding: 0.3em 0.5em;
-    font-size: 1em;
-    font-weight: 500;
-    cursor: pointer;
-    background: none;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    width: 100%;
-    text-align: left;
-    outline: none;
-    color: inherit;
-    display: flex;
-    align-items: center;
-    gap: 0.4em;
-    transition: background-color 0.1s ease-in-out;
-}
-
-.category:hover {
-    background-color: var(--vscode-list-hoverBackground);
-}
-
-.category.expanded {
-    background-color: var(--vscode-list-activeSelectionBackground);
-}
-
-.category:focus {
-    outline: 1px solid var(--vscode-focusBorder);
-}
-
-.cat-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.1s ease-in-out;
-}
-
-.cat-icon.expanded {
-    transform: rotate(90deg);
-}
-
-.category-label {
-    flex-grow: 1;
-}
-
-.symbol-list-container {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0.7em;
-    display: flex;
-    flex-direction: column;
-    gap: 0.2em;
-}
-
-.symbol-list-container::-webkit-scrollbar {
-    width: 8px;
-}
-
-.symbol-list-container::-webkit-scrollbar-track {
-    background-color: transparent;
-}
-
-.symbol-list-container::-webkit-scrollbar-thumb {
-    background-color: transparent;
-    border-radius: 4px;
-}
-
-.symbol-list-container:hover::-webkit-scrollbar-thumb {
-    background-color: var(--vscode-scrollbarSlider-background);
-}
-
-.symbol-list-container::-webkit-scrollbar-thumb:hover {
-    background-color: var(--vscode-scrollbarSlider-hoverBackground);
-}
-
-
-.tables-list {
-    list-style: none;
-    margin: 0;
-    padding: 0 0 0 24px;
-}
-
-.table-li {
-    padding: 0.4em 0.8em;
-    font-size: 1em;
-    border-radius: 3px;
-    cursor: pointer;
-    transition: background 0.1s, color 0.15s;
-}
-
-.table-li.selected,
-.table-li:hover {
-    background: var(--table-li-hover-bg);
-    color: var(--table-li-hover-fg);
-}
-
-.none-li {
-    color: var(--none-li-fg);
-    padding: 0.4em 1.7em;
-    font-style: italic;
-}
-
-/* --- Table Styles --- */
 .table-header-info {
-    margin-bottom: 1em;
-    font-size: 1.1em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5em;
+    font-size: large;
     color: var(--container-fg);
 }
 
 .symbol-span strong {
     font-weight: 600;
-    color: var(--category-outline); /* Use a highlight color for the name */
+    color: var(--category-outline);
 }
 
 table {
@@ -210,77 +68,83 @@ tr:nth-child(even) td {
     text-align: center;
 }
 
-/* --- Pagination Styles --- */
-.pagination {
+.loader-container {
     display: flex;
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
-    gap: 0.5em;
-    padding-top: 1.5em;
-    user-select: none;
-    width: 100%;
+    height: 100vh;
+    color: var(--nodata-fg);
+    background-color: var(--background);
 }
 
-.pagination button {
-    background: var(--table-row-bg-alt);
-    border: 1px solid var(--table-border);
-    color: var(--container-fg);
-    padding: 0.4em 0.8em;
-    border-radius: 5px;
-    cursor: pointer;
+.loader {
+    border: 4px solid var(--table-row-bg-alt);
+    border-top: 4px solid var(--category-outline);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1em;
 }
 
-.pagination button:not(:disabled):hover {
-    background: var(--table-li-hover-bg);
-    color: var(--table-li-hover-fg);
-}
-
-.pagination button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.pagination strong {
-    color: var(--category-outline);
-}
-
-.rightAlignRecords {
-    margin-left: auto;
-    font-size: 0.9em;
+.table-loader-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
     color: var(--nodata-fg);
 }
 
-.page-input-container {
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-    margin-left: 1em;
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
-.page-input {
-    width: 50px;
-    padding: 0.4em;
+.symbol-tooltip-container {
+    position: relative;
+    display: inline-block;
+}
+
+.symbol-tooltip {
+    visibility: hidden;
+    opacity: 0.9;
+    width: max-content;
+    max-width: 350px;
+    background-color: var(--sidebar-bg, #191d20);
+    color: var(--vscode-editor-foreground);
     font-size: 0.9em;
-    text-align: center;
-    background: var(--background);
-    border: 1.3px solid var(--table-border);
-    color: var(--container-fg);
-    border-radius: 5px;
-    outline: none;
+    text-align: left;
+    border-radius: 4px;
+    padding: 8px 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+    position: absolute;
+    z-index: 5;
+    top: 0;            
+    left: 100%;        
+    margin-left: 0.8em;
+    transition: opacity 0.2s;
 }
 
-.page-input:focus {
-    border-color: var(--category-outline);
+.symbol-tooltip-container:hover .symbol-tooltip {
+    visibility: visible;
+    opacity: 1;
 }
 
-/* Hide the default up/down arrows on number inputs */
-.page-input::-webkit-outer-spin-button,
-.page-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+.symbol-tooltip div {
+    margin-bottom: 5px;
 }
 
-/* For Firefox */
-.page-input[type=number] {
-  -moz-appearance: textfield;
+.symbol-tooltip div:last-child {
+    margin-bottom: 0;
 }
 
+.symbol-tooltip strong {
+    color: var(--vscode-descriptionForeground);
+}

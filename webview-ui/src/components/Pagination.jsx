@@ -1,11 +1,13 @@
 import React from 'react';
+import './styles/Pagination.css';
 
 function Pagination({
     table,
     totalRecords,
     goToPageValue,
     onGoToPageValueChange,
-    onGoToPage
+    onGoToPage,
+    onPageSizeChange
 }) {
     return (
         <div className="pagination" >
@@ -29,7 +31,21 @@ function Pagination({
             <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Next &rsaquo;</button>
             <button onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()}>Last &raquo;</button>
             <div className="rightAlignRecords">
-                <span> Total Records: <strong>{totalRecords}</strong></span>
+                <span style={{ marginRight: "8px" }} > Total Records: <strong>{totalRecords}</strong></span>
+                <span>
+                    Page Size:
+                    <select
+                        className="page-rows"
+                        value={table.getState().pagination.pageSize}
+                        onChange={e => {
+                            onPageSizeChange(Number(e.target.value));
+                        }}
+                    >
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                    </select>
+                </span>
             </div>
         </div>
     );

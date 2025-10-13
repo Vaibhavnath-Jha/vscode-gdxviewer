@@ -1,0 +1,21 @@
+.symbol-search-container {
+    display: flex;
+    justify-content: center;
+    padding: 1.2em 0.7em 1em 0.7em;
+}
+
+.symbol-search {
+    width: 95%;
+    padding: 0.4em 0.6em;
+    font-size: 1em;
+    background: var(--background);
+    border: 1px solid var(--table-border);
+    color: var(--container-fg);
+    border-radius: 5px;
+    outline: none;
+    transition: border-color 0.1s;
+}
+
+.symbol-search:focus {
+    border-color: var(--category-outline);
+}

@@ -1,0 +1,75 @@
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding-top: 1.5em;
+    user-select: none;
+    width: 100%;
+}
+
+.pagination button {
+    background: var(--table-row-bg-alt);
+    border: 1px solid var(--table-border);
+    color: var(--container-fg);
+    padding: 0.4em 0.8em;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.pagination button:not(:disabled):hover {
+    background: var(--table-li-hover-bg);
+    color: var(--table-li-hover-fg);
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination strong {
+    color: var(--category-outline);
+}
+
+.rightAlignRecords {
+    margin-left: auto;
+    font-size: 0.9em;
+    color: var(--nodata-fg);
+}
+
+.page-input-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-left: 1em;
+}
+
+.page-input,
+.page-rows {
+    width: 50px;
+    padding: 0.4em;
+    font-size: 0.9em;
+    text-align: center;
+    background: var(--background);
+    border: 1.3px solid var(--table-border);
+    color: var(--container-fg);
+    border-radius: 5px;
+    outline: none;
+}
+
+.page-input:focus,
+.page-rows:focus {
+    border-color: var(--category-outline);
+}
+
+.page-rows {
+    margin-left: 5px;
+}
+
+/* Hide the default up/down arrows on number inputs */
+.page-input::-webkit-outer-spin-button,
+.page-input::-webkit-inner-spin-button,
+.page-rows::-webkit-outer-spin-button,
+.page-rows::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
