@@ -99,13 +99,16 @@ class GdxReader:
 
         return categorized
 
-    def paginate_symbol_data(self, name: str, page: int = 1) -> List[Dict[str, Any]]:
+    def paginate_symbol_data(
+        self, name: str, page: int = 1, rows: int = 100
+    ) -> List[Dict[str, Any]]:
         """
         Retrieves the records for a given symbol.
 
         Args:
             name: The name of the symbol to retrieve.
-            page: The page index to return corresponding 100 rows.
+            page: The page index to return corresponding rows for.
+            rows: The number of records per page.
 
         Returns:
             A list of dictionaries representing the symbol's records.
@@ -117,16 +120,23 @@ class GdxReader:
         if name not in self.container:
             raise KeyError(f"Symbol '{name}' does not exist in the GDX file.")
 
-        symbol = self.container[name]
+        symbol: gt.Set | gt.Parameter | gt.Variable | gt.Equation | gt.Alias = (
+            self.container[name]
+        )
         if symbol.records is None:
             return [], 0
 
-        start_index = (page - 1) * 100
-        end_index = page * 100
+        start_index = (page - 1) * rows
+        end_index = page * rows
         paginated_df: pd.DataFrame = symbol.records[start_index:end_index]
         paginated_df = paginated_df.replace([np.inf, -np.inf], [1e300, -1e300])
+        response = {
+            "data": paginated_df.to_dict(orient="records"),
+            "total_records": len(symbol.records),
+            "sym_text": symbol.description if symbol.description else None,
+        }
 
-        return paginated_df.to_dict(orient="records"), len(symbol.records)
+        return f"{json.dumps(response)}\n"
 
 
 def main():
@@ -152,16 +162,19 @@ def main():
         if is_interactive:
             for line in sys.stdin:
                 params = json.loads(line)
-                symbol_name, page_number = params["symbolName"], params["page"]
+                symbol_name, page_number, rows_per_page = (
+                    params["symbolName"],
+                    params["page"],
+                    params["rows"],
+                )
                 if not symbol_name:
                     continue
 
                 try:
-                    data, total_records = reader.paginate_symbol_data(
-                        name=symbol_name, page=page_number
+                    response = reader.paginate_symbol_data(
+                        name=symbol_name, page=page_number, rows=rows_per_page
                     )
-                    response = {"data": data, "total_records": total_records}
-                    sys.stdout.write(f"{json.dumps(response)}\n")
+                    sys.stdout.write(response)
                 except KeyError as e:
                     sys.stdout.write(f"{str(e)}\n")
                 sys.stdout.flush()
