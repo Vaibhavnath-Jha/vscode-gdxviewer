@@ -5,7 +5,7 @@ import json
 import os
 import shutil
 import sys
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Dict, List
 
 import numpy as np
 from gams import transfer as gt
@@ -99,9 +99,7 @@ class GdxReader:
 
         return categorized
 
-    def paginate_symbol_data(
-        self, name: str, page: int = 1, rows: int = 100
-    ) -> List[Dict[str, Any]]:
+    def paginate_symbol_data(self, name: str, page: int = 1, rows: int = 100) -> str:
         """
         Retrieves the records for a given symbol.
 
@@ -111,8 +109,7 @@ class GdxReader:
             rows: The number of records per page.
 
         Returns:
-            A list of dictionaries representing the symbol's records.
-            Returns an empty list if the symbol has no records.
+            JSON string containing symbol data
 
         Raises:
             KeyError: If the symbol does not exist in the GDX file.
@@ -124,7 +121,12 @@ class GdxReader:
             self.container[name]
         )
         if symbol.records is None:
-            return [], 0
+            response = {
+                "data": [],
+                "total_records": 0,
+                "sym_text": None,
+            }
+            return f"{json.dumps(response)}\n"
 
         start_index = (page - 1) * rows
         end_index = page * rows
@@ -148,7 +150,7 @@ def main():
     """
     if len(sys.argv) < 2:
         print(
-            "Usage: python gdx_service.py <path_to_gdx_file> [--interactive]",
+            "Usage: python readgdx.py <path_to_gdx_file> [--interactive]",
             file=sys.stderr,
         )
         sys.exit(1)
