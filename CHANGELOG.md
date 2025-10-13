@@ -4,9 +4,21 @@ All notable changes to the `GDXViewer` extension will be documented in this file
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [1.4.0] - 13.10.2025
 
-- Backend pagination for large symbols
+- Use Tanstack-query for caching
+- Support for changing page size
+- Refresh view on file update
+- Column toggle button
+- Partial symbol search
+- cosmetic enhancements in *UI*
+
+## [1.3.0] - 06.10.2025
+
+- Backend pagination for symbols.
+- Use Tanstack table (React app) for *UI*.
+- Support front-end pagination.
+- use `python.defaultInterpreterPath` instead of `python.pythonPath`
 
 ## [1.2.1] - 18.09.2025
 

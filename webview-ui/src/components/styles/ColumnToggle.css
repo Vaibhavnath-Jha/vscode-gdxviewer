@@ -1,0 +1,48 @@
+.column-toggle-container {
+    position: relative; /* For positioning the dropdown */
+}
+
+.toggle-button {
+    background: var(--table-row-bg-alt);
+    border: 1px solid var(--table-border);
+    color: var(--container-fg);
+    padding: 0.4em 0.8em;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8em;
+}
+
+.toggle-button:hover {
+    background: var(--table-li-hover-bg);
+    color: var(--table-li-hover-fg);
+}
+
+.column-toggle-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 10;
+    background: var(--sidebar-bg);
+    border: 1px solid var(--table-border);
+    border-radius: 5px;
+    padding: 0.5em;
+    margin-top: 0.3em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+    min-width: 150px;
+}
+
+.column-toggle-dropdown label {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    font-size: 0.9em;
+    user-select: none;
+}
+
+.column-toggle-dropdown hr {
+    border: none;
+    border-top: 1px solid var(--table-border);
+    margin: 0.3em 0;
+}

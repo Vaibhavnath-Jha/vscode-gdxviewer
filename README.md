@@ -6,9 +6,9 @@ If the required environment is not available, the extension [provides a command]
 ## Features
 Once the Python interpreter's path is set, you can either provide the path to the GDX file or, if the file is already available in the workspace, right-click to bring up the context menu and via the `Open with...` option select "GDX Viewer" as the default editor.
 
-1. Select a symbol from the sidebar to display its content.
-2. Search for a symbol in the GDX file.
-3. Since `GDXViewer` parses JSON string to display the content, values like `Infinity` and `-Infinity` has been replaced with `1e+300` and `1e-300`.
+*   Select a symbol from the sidebar to display its content.
+*   Search for a symbol in the GDX file.
+*   Since `GDXViewer` parses JSON string to display the content, values like `Infinity` and `-Infinity` has been replaced with `1e+300` and `1e-300`.
 
 ![Demo of GDXViewer](images/gdxviewerUsage.gif)
 
@@ -26,10 +26,26 @@ pip install -r requirements.txt
 
 This extension contributes the following settings:
 
-* `gdx.Display`: Display the GDX File.
-* `gdx.initializeDevContainer`: Creates the Recommended `devcontainer.json` file.
+*   `gdx.Display`: Display the GDX File.
+*   `gdx.initializeDevContainer`: Creates the Recommended `devcontainer.json` file.
 
 ## Release Notes
+
+## 1.4.0
+
+- Use Tanstack-query for caching
+- Support for changing page size
+- Refresh view on file update
+- Column toggle button
+- Partial symbol search
+- cosmetic enhancements in *UI*
+
+### 1.3.0
+
+- Backend pagination for symbols.
+- Use Tanstack table (React app) for *UI*.
+- Support front-end pagination.
+- Use `python.defaultInterpreterPath` instead of `python.pythonPath` in devcontainers.
 
 ### 1.2.1
 
@@ -44,14 +60,3 @@ This extension contributes the following settings:
 ### 1.1.1
 
 - Refactor javascript and css into distinct files for maintainability
-
-### 1.1.0
-
-- Replaced `execFile` with `spawn`, eliminating `maxBuffer` limitations; large GDX files can now be viewed.
-- Fetch symbol data on request
-- File picker dialog box for selecting the GDX File
-- Support for VSCode light themes
-
-### 1.0.1
-
-- Updated README

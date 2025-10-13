@@ -1,6 +1,7 @@
 .vscode/**
 .vscode-test/**
 src/**
+.git/**
 .gitignore
 .yarnrc
 vsc-extension-quickstart.md
@@ -11,3 +12,25 @@ vsc-extension-quickstart.md
 **/.vscode-test.*
 .ruff_cache/**
 .devcontainer/**
+.venv/**
+node_modules/**
+*.vsix
+
+src/**
+tsconfig.json
+.eslintrc.cjs
+
+# Ignore the entire node_modules folder for the React app
+webview-ui/node_modules/**
+webview-ui/.gitignore
+
+# Ignore the React source code, as we only need the compiled output from 'dist'
+webview-ui/src/**
+webview-ui/public/**
+
+# Ignore React/Vite configuration and lock files
+webview-ui/package.json
+webview-ui/package-lock.json
+webview-ui/vite.config.js
+webview-ui/index.html
+webview-ui/eslint.config.js

@@ -38,13 +38,12 @@ export class GdxEditorProvider implements vscode.CustomEditorProvider<GdxDocumen
     webviewPanel: vscode.WebviewPanel,
     _token: vscode.CancellationToken
   ): Promise<void> {
-
     const fileToParse = document.uri.fsPath;
 
     // 1. Configure the Webview
     webviewPanel.webview.options = {
       enableScripts: true,
-      localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'webview')]
+      localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'webview-ui')],
     };
     webviewPanel.webview.html = getWebviewContent(webviewPanel.webview, this.context.extensionUri);
 
@@ -52,12 +51,58 @@ export class GdxEditorProvider implements vscode.CustomEditorProvider<GdxDocumen
     const currentState: GdxViewState = { interactiveProcess: null };
     gdxViewStates.set(fileToParse, currentState);
 
+    // 3. Watch for file changes and re-initiate the state interactive process
+    const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(document.uri, '*'));
+    const changeSubscription = watcher.onDidChange(() => {
+      webviewPanel.webview.postMessage({ command: 'fileUpdated' });
+      const state = gdxViewStates.get(document.uri.fsPath);
+      if (state?.interactiveProcess) {
+        state.interactiveProcess.kill();
+        state.interactiveProcess = null;
+      }
+      this.fetchAndSendIndexData(document, webviewPanel);
+    });
+
     webviewPanel.onDidDispose(() => {
       currentState.interactiveProcess?.kill();
       gdxViewStates.delete(fileToParse);
+      changeSubscription.dispose();
+      watcher.dispose();
     });
 
-    // 3. Validate Python environment
+    // 4. Get the categories and initial view
+    this.fetchAndSendIndexData(document, webviewPanel);
+
+    // 5. Start the interactive process when a symbol is selected
+    webviewPanel.webview.onDidReceiveMessage(async (message: any) => {
+      if (message.command === 'getSymbol') {
+        const state = gdxViewStates.get(fileToParse);
+        if (!state) { return; }
+
+        let pythonPath: string;
+        try {
+          pythonPath = await getPythonPath();
+        } catch (err: any) {
+          vscode.window.showErrorMessage(err.message);
+          return;
+        }
+        const scriptPath = path.join(this.context.extensionPath, 'scripts', 'readgdx.py');
+
+        if (!state.interactiveProcess || state.interactiveProcess.killed) {
+          state.interactiveProcess = this.startInteractiveProcess(fileToParse, scriptPath, pythonPath, webviewPanel);
+        }
+        const params = { "symbolName": message.symbolName, "page": message.page, "rows": message.rows };
+        state.interactiveProcess.stdin.write(JSON.stringify(params) + "\n");
+      }
+    });
+  }
+
+  // 6. Send the data to front-end app
+  private async fetchAndSendIndexData(document: GdxDocument, webviewPanel: vscode.WebviewPanel): Promise<void> {
+    const fileToParse = document.uri.fsPath;
+    const state = gdxViewStates.get(fileToParse);
+    if (!state) return;
+
     let pythonPath: string;
     try {
       pythonPath = await getPythonPath();
@@ -67,8 +112,6 @@ export class GdxEditorProvider implements vscode.CustomEditorProvider<GdxDocumen
       webviewPanel.webview.html = `<h1>Error</h1><p>${err.message}</p>`;
       return;
     }
-
-    // 4. Fetch the initial list of symbols from the GDX file
     const scriptPath = path.join(this.context.extensionPath, 'scripts', 'readgdx.py');
     const indexProcess = spawn(pythonPath, [scriptPath, fileToParse]);
 
@@ -80,31 +123,16 @@ export class GdxEditorProvider implements vscode.CustomEditorProvider<GdxDocumen
       if (webviewPanel.visible && code === 0) {
         try {
           const indexData = JSON.parse(stdoutBuffer);
-          currentState.indexData = indexData;
+          state.indexData = indexData;
           webviewPanel.webview.postMessage({ command: 'initialize', data: indexData });
         } catch (e: any) {
-          vscode.window.showErrorMessage(`Failed to parse symbol index: ${e.message}.`);
+          vscode.window.showErrorMessage(`Failed to parse symbol index: ${e.message}. Raw: ${stdoutBuffer}`);
         }
-      }
-    });
-
-    // 5. Listen for messages from the webview to fetch specific symbol data
-    webviewPanel.webview.onDidReceiveMessage(async (message: any) => {
-      if (message.command === 'getSymbol') {
-        const state = gdxViewStates.get(fileToParse);
-        if (!state) return;
-
-        // Start the interactive python process if it's not running
-        if (!state.interactiveProcess || state.interactiveProcess.killed) {
-          state.interactiveProcess = this.startInteractiveProcess(fileToParse, scriptPath, pythonPath, webviewPanel);
-        }
-        
-        // Send the requested symbol name to the python process
-        state.interactiveProcess.stdin.write(`${message.symbolName}\n`);
       }
     });
   }
 
+  // 6. Request the symbol data from the backend Python process.
   private startInteractiveProcess(
     fileToParse: string,
     scriptPath: string,
@@ -121,8 +149,13 @@ export class GdxEditorProvider implements vscode.CustomEditorProvider<GdxDocumen
         const messageChunk = buffer.substring(0, boundary);
         buffer = buffer.substring(boundary + 1);
         try {
-          const symbolData = JSON.parse(messageChunk);
-          webviewPanel.webview.postMessage({ command: 'displaySymbolData', data: symbolData });
+          const parsedOutput = JSON.parse(messageChunk);
+          webviewPanel.webview.postMessage({
+            command: 'displaySymbolData',
+            data: parsedOutput.data,
+            totalRecords: parsedOutput.total_records,
+            symText: parsedOutput.sym_text,
+          });
         } catch (e: any) {
           console.error(`Failed to parse symbol data: ${e.message}. Raw: ${messageChunk}`);
         }

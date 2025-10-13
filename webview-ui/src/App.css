@@ -1,0 +1,150 @@
+.app-layout {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+    overflow-x: auto;
+    min-width: 600px;
+}
+
+.container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5em 2em;
+    overflow: auto;
+    min-width: 350px;
+}
+
+.table-container {
+    flex: 1;
+    overflow: auto;
+    border-radius: 6px;
+}
+
+.table-header-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5em;
+    font-size: large;
+    color: var(--container-fg);
+}
+
+.symbol-span strong {
+    font-weight: 600;
+    color: var(--category-outline);
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    background: var(--table-bg);
+}
+
+th,
+td {
+    border: 1px solid var(--table-border);
+    padding: 0.5em 0.8em;
+    text-align: left;
+}
+
+th {
+    background: var(--table-header-bg);
+    font-weight: bold;
+    color: var(--table-header-fg);
+    position: sticky;
+    top: 0;
+}
+
+tr:nth-child(even) td {
+    background: var(--table-row-bg-alt);
+}
+
+.nodata {
+    color: var(--nodata-fg);
+    font-size: 1.1em;
+    font-style: italic;
+    padding: 2em;
+    text-align: center;
+}
+
+.loader-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: var(--nodata-fg);
+    background-color: var(--background);
+}
+
+.loader {
+    border: 4px solid var(--table-row-bg-alt);
+    border-top: 4px solid var(--category-outline);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1em;
+}
+
+.table-loader-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+    color: var(--nodata-fg);
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.symbol-tooltip-container {
+    position: relative;
+    display: inline-block;
+}
+
+.symbol-tooltip {
+    visibility: hidden;
+    opacity: 0.9;
+    width: max-content;
+    max-width: 350px;
+    background-color: var(--sidebar-bg, #191d20);
+    color: var(--vscode-editor-foreground);
+    font-size: 0.9em;
+    text-align: left;
+    border-radius: 4px;
+    padding: 8px 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+    position: absolute;
+    z-index: 5;
+    top: 0;            
+    left: 100%;        
+    margin-left: 0.8em;
+    transition: opacity 0.2s;
+}
+
+.symbol-tooltip-container:hover .symbol-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+.symbol-tooltip div {
+    margin-bottom: 5px;
+}
+
+.symbol-tooltip div:last-child {
+    margin-bottom: 0;
+}
+
+.symbol-tooltip strong {
+    color: var(--vscode-descriptionForeground);
+}

@@ -9,7 +9,7 @@ export function activate(context: vscode.ExtensionContext) {
       new GdxEditorProvider(context),
       {
         webviewOptions: {
-          retainContextWhenHidden: false,
+          retainContextWhenHidden: true,
         },
         supportsMultipleEditorsPerDocument: false,
       }

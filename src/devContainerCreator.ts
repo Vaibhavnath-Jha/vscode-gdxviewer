@@ -41,7 +41,7 @@ export async function createDevContainerFile() {
 		"customizations": {
 			"vscode": {
 				"settings": {
-					"python.pythonPath": "${workspaceFolder}/.venv/bin/python"
+					"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
 				},
 				"extensions": [
 					"VaibhavnathJha.gdxviewer"
