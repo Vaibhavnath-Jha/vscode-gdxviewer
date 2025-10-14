@@ -148,3 +148,19 @@ tr:nth-child(even) td {
 .symbol-tooltip strong {
     color: var(--vscode-descriptionForeground);
 }
+
+.resizer {
+    position: absolute;
+    top: 0;
+    right: -2px;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+    user-select: none;
+    z-index: 20; 
+}
+
+.resizer:hover {
+    background-color: var(--vscode-sash-hoverBorder, #007fd4);
+    opacity: 0.5;
+}
