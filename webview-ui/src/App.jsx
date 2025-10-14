@@ -1,24 +1,26 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useMemo, useReducer, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
     useReactTable,
     getCoreRowModel,
     flexRender,
 } from '@tanstack/react-table';
+
+import { vscode } from './vscodeApi';
 import Sidebar from './components/Sidebar';
 import Pagination from './components/Pagination';
 import ColumnToggle from './components/ColumnToggle';
+import { useVscodeListener } from './hooks/useVscodeListener';
+import { useResizableSidebar } from './hooks/useResizableSidebar';
 import './App.css';
 
-const vscode = acquireVsCodeApi();
-
+// --- Helper Functions & Loader Components ---
 function fetchSymbolData(params) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const handleResponse = (event) => {
-            const message = event.data;
-            if (message.command === 'displaySymbolData') {
+            if (event.data.command === 'displaySymbolData') {
                 window.removeEventListener('message', handleResponse);
-                resolve(message);
+                resolve(event.data);
             }
         };
         window.addEventListener('message', handleResponse);
@@ -26,21 +28,92 @@ function fetchSymbolData(params) {
     });
 }
 
+function InitialLoader() {
+    return (
+        <div className="loader-container">
+            <div className="loader"></div>
+            <p>Loading Symbols...</p>
+        </div>
+    );
+}
+function TableLoader() {
+    return (
+        <div className="table-loader-container">
+            <div className="loader"></div>
+            <p>Loading Data...</p>
+        </div>
+    );
+}
+
+// --- Reducer for State Management ---
+const initialState = {
+    isInitializing: true,
+    symbolIndex: {},
+    categories: [],
+    expandedCats: {},
+    selectedTable: null,
+    pagination: { pageIndex: 0, pageSize: 100 },
+    columnVisibility: {},
+    searchTerm: '',
+    goToPageValue: 1,
+    sidebarWidth: 240,
+    isResizing: false,
+};
+
+function reducer(state, action) {
+    switch (action.type) {
+        case 'INITIALIZE':
+            return {
+                ...state,
+                symbolIndex: action.payload.data || {},
+                categories: Object.keys(action.payload.data || {}),
+                isInitializing: false,
+            };
+        case 'FILE_UPDATED':
+            return { ...state, isInitializing: true };
+        case 'SELECT_TABLE':
+            return {
+                ...state,
+                selectedTable: action.payload.tableName,
+                expandedCats: { [action.payload.category]: true },
+                pagination: { ...state.pagination, pageIndex: 0 },
+                columnVisibility: {},
+            };
+        case 'TOGGLE_CATEGORY':
+            return { ...state, expandedCats: { ...state.expandedCats, [action.payload]: !state.expandedCats[action.payload] } };
+        case 'SET_PAGINATION':
+            return { ...state, pagination: action.payload };
+        case 'SET_COLUMN_VISIBILITY':
+            return { ...state, columnVisibility: action.payload };
+        case 'SET_SEARCH_TERM':
+            return { ...state, searchTerm: action.payload };
+        case 'SET_GOTO_PAGE_VALUE':
+            return { ...state, goToPageValue: action.payload };
+        case 'SET_EXPANDED_CATS':
+            return { ...state, expandedCats: action.payload };
+        case 'SET_SIDEBAR_WIDTH':
+            return { ...state, sidebarWidth: action.payload };
+        case 'SET_IS_RESIZING':
+            return { ...state, isResizing: action.payload };
+        default:
+            return state;
+    }
+}
 
 function App() {
-    const [symbolIndex, setSymbolIndex] = useState({});
-    const [categories, setCategories] = useState([]);
-    const [expandedCats, setExpandedCats] = useState({});
-    const [selectedTable, setSelectedTable] = useState(null);
-    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 100 });
-    const [columnVisibility, setColumnVisibility] = useState({});
-    const [searchTerm, setSearchTerm] = useState('');
-    const [goToPageValue, setGoToPageValue] = useState(1);
-    const [isInitializing, setIsInitializing] = useState(true);
+    const [state, dispatch] = useReducer(reducer, initialState);
+    const {
+        isInitializing, symbolIndex, categories, expandedCats, selectedTable, pagination,
+        columnVisibility, searchTerm, goToPageValue, sidebarWidth, isResizing
+    } = state;
 
-    const queryClient = useQueryClient();
+    const sidebarRef = useRef(null);
 
-    const { data: tableQueryResult, isLoading, isError, isFetching } = useQuery({
+    // --- Using Custom Hooks for side effects ---
+    useVscodeListener(dispatch);
+    useResizableSidebar(isResizing, dispatch);
+
+    const { data: tableQueryResult, isLoading, isError } = useQuery({
         queryKey: ['symbolData', selectedTable, pagination.pageIndex, pagination.pageSize],
         queryFn: () => fetchSymbolData({
             symbolName: selectedTable,
@@ -49,34 +122,11 @@ function App() {
         }),
         enabled: !!selectedTable,
         keepPreviousData: true,
-        staleTime: Infinity, // data is always fresh until the gdx file changes, then the cache is invalidated.
+        staleTime: Infinity,
     });
 
-    // --- VS Code Communication ---
     useEffect(() => {
-        const handleMessage = (event) => {
-            const message = event.data;
-            switch (message.command) {
-                case 'initialize':
-                    setSymbolIndex(message.data || {});
-                    setCategories(Object.keys(message.data || {}));
-                    setSelectedTable(null);
-                    setExpandedCats({});
-                    setIsInitializing(false);
-                    break;
-                case 'fileUpdated':
-                    queryClient.invalidateQueries();
-                    break;
-            }
-        };
-
-        window.addEventListener('message', handleMessage);
-        vscode.postMessage({ command: 'initialize' });
-        return () => window.removeEventListener('message', handleMessage);
-    }, [queryClient]);
-
-    useEffect(() => {
-        setGoToPageValue(pagination.pageIndex + 1);
+        dispatch({ type: 'SET_GOTO_PAGE_VALUE', payload: pagination.pageIndex + 1 });
     }, [pagination.pageIndex]);
 
     const filteredSymbolIndex = useMemo(() => {
@@ -84,7 +134,6 @@ function App() {
         const newExpandedCats = {};
         const filtered = {};
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
-
         for (const cat of categories) {
             const matchingSymbols = (symbolIndex[cat] || []).filter(tname =>
                 tname.toLowerCase().includes(lowerCaseSearchTerm)
@@ -94,96 +143,76 @@ function App() {
                 newExpandedCats[cat] = true;
             }
         }
-        setExpandedCats(newExpandedCats);
+        dispatch({ type: 'SET_EXPANDED_CATS', payload: newExpandedCats });
         return filtered;
     }, [searchTerm, symbolIndex, categories]);
+
     const categoriesToRender = searchTerm ? Object.keys(filteredSymbolIndex) : categories;
-
-    // --- Event Handlers ---
-    const handleSelectTable = (tableName, category) => {
-        setExpandedCats({ [category]: true });
-        setPagination(p => ({ ...p, pageIndex: 0 }));
-        setSelectedTable(tableName);
-        setColumnVisibility({});
-    };
-
-    const handleToggleCategory = (cat) => {
-        setExpandedCats(prev => ({ ...prev, [cat]: !prev[cat] }));
-    };
-
-    const handleGoToPage = () => {
-        const page = parseInt(goToPageValue, 10);
-        if (!isNaN(page) && page >= 1 && page <= table.getPageCount()) {
-            table.setPageIndex(page - 1);
-        }
-    };
-
-    const handlePageSizeChange = (newPageSize) => {
-        setPagination(p => ({ ...p, pageIndex: 0, pageSize: newPageSize }));
-    };
 
     const tableData = useMemo(() => tableQueryResult?.data || [], [tableQueryResult]);
     const totalRecords = tableQueryResult?.totalRecords || 0;
-    const symText = tableQueryResult?.symText;
-
+    const symText = tableQueryResult?.symText || '';
     const columns = useMemo(() => {
         if (tableData.length === 0) return [];
-        const keys = Object.keys(tableData[0]);
-        return keys.map(key => ({ accessorKey: key, header: key, cell: info => info.getValue() }));
+        return Object.keys(tableData[0]).map(key => ({
+            accessorKey: key,
+            header: key,
+            cell: info => info.getValue(),
+        }));
     }, [tableData]);
 
     const table = useReactTable({
         data: tableData,
         columns,
         state: { pagination, columnVisibility },
-        onPaginationChange: setPagination,
-        onColumnVisibilityChange: setColumnVisibility,
+        onPaginationChange: (updater) => dispatch({ type: 'SET_PAGINATION', payload: typeof updater === 'function' ? updater(pagination) : updater }),
+        onColumnVisibilityChange: (updater) => dispatch({ type: 'SET_COLUMN_VISIBILITY', payload: typeof updater === 'function' ? updater(columnVisibility) : updater }),
         pageCount: Math.ceil(totalRecords / pagination.pageSize) || -1,
         manualPagination: true,
         getCoreRowModel: getCoreRowModel(),
     });
 
-    const showTable = !isLoading && !isError && selectedTable && tableData.length > 0;
-
     if (isInitializing) {
-        return (
-            <div className="loader-container">
-                <div className="loader"></div>
-                <p>Loading Symbols...</p>
-            </div>
-        );
+        return <InitialLoader />;
     }
 
     return (
         <div className="app-layout">
             <Sidebar
+                ref={sidebarRef}
+                style={{ width: `${sidebarWidth}px` }}
                 searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
+                onSearchChange={(value) => dispatch({ type: 'SET_SEARCH_TERM', payload: value })}
                 categoriesToRender={categoriesToRender}
                 expandedCats={expandedCats}
-                onToggleCategory={handleToggleCategory}
+                onToggleCategory={(cat) => dispatch({ type: 'TOGGLE_CATEGORY', payload: cat })}
                 filteredSymbolIndex={filteredSymbolIndex}
                 selectedTable={selectedTable}
-                onSelectTable={handleSelectTable}
-            />
+                onSelectTable={(tableName, category) => dispatch({ type: 'SELECT_TABLE', payload: { tableName, category } })}
+            >
+                <div
+                    className="resizer"
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        dispatch({ type: 'SET_IS_RESIZING', payload: true });
+                    }}
+                ></div>
+            </Sidebar>
             <div className="container">
                 {!selectedTable ? (
                     <div className="nodata">Select a symbol to view its data.</div>
                 ) : isLoading ? (
-                    <div className="table-loader-container">
-                        <div className="loader"></div>
-                        <p>Loading Data...</p>
-                    </div>
+                    <TableLoader />
                 ) : isError ? (
                     <div className="nodata">Error fetching data.</div>
-                ) : showTable ? (
+                ) : tableData.length > 0 ? (
                     <>
                         <div className="table-header-info">
                             <div className="symbol-tooltip-container">
                                 <span className="symbol-span"><strong>{selectedTable}</strong></span>
                                 {(symText) && (
                                     <div className="symbol-tooltip">
-                                        {symText && <div>{symText}</div>}
+                                        {<div>{symText}</div>}
                                     </div>
                                 )}
                             </div>
@@ -206,9 +235,7 @@ function App() {
                                     {table.getRowModel().rows.map(row => (
                                         <tr key={row.id}>
                                             {row.getVisibleCells().map(cell => (
-                                                <td key={cell.id}>
-                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                </td>
+                                                <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
                                             ))}
                                         </tr>
                                     ))}
@@ -219,9 +246,14 @@ function App() {
                             table={table}
                             totalRecords={totalRecords}
                             goToPageValue={goToPageValue}
-                            onGoToPageValueChange={setGoToPageValue}
-                            onGoToPage={handleGoToPage}
-                            onPageSizeChange={handlePageSizeChange}
+                            onGoToPageValueChange={(value) => dispatch({ type: 'SET_GOTO_PAGE_VALUE', payload: value })}
+                            onGoToPage={() => {
+                                const page = parseInt(goToPageValue, 10);
+                                if (!isNaN(page) && page >= 1 && page <= table.getPageCount()) {
+                                    table.setPageIndex(page - 1);
+                                }
+                            }}
+                            onPageSizeChange={(size) => dispatch({ type: 'SET_PAGINATION', payload: { pageIndex: 0, pageSize: size } })}
                         />
                     </>
                 ) : (
