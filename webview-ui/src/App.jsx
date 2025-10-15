@@ -28,11 +28,11 @@ function fetchSymbolData(params) {
     });
 }
 
-function InitialLoader() {
+function InitialLoader({ message }) {
     return (
         <div className="loader-container">
             <div className="loader"></div>
-            <p>Loading Symbols...</p>
+            <p>{message}</p>
         </div>
     );
 }
@@ -59,7 +59,7 @@ function App() {
     // --- Import states from Appstore ---
     const {
         isInitializing, symbolIndex, categories, expandedCats, selectedSymbol, pagination,
-        columnVisibility, searchTerm, goToPageValue
+        columnVisibility, searchTerm, goToPageValue, loadingMessage
     } = useAppStore();
 
     // --- Import actions from Appstore ---
@@ -136,7 +136,7 @@ function App() {
     });
 
     if (isInitializing) {
-        return <InitialLoader />;
+        return <InitialLoader message={loadingMessage} />;
     }
 
     return (

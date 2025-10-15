@@ -14,6 +14,7 @@ export const useAppStore = create((set) => ({
     goToPageValue: 1,
     sidebarWidth: 240,
     isResizing: false,
+    loadingMessage: 'Loading Symbols...',
 
     // --- actions ---
     initialize: (data) => set({
@@ -23,7 +24,7 @@ export const useAppStore = create((set) => ({
         expandedCats: {},
         isResizing: false
     }),
-    fileUpdated: () => set({ isInitializing: true }),
+    fileUpdated: () => set({ isInitializing: true, loadingMessage: 'GDX Updated. Refreshing symbols...' }),
     selectSymbol: (symbolname, category) => set((state) => {
         const newState = {
             selectedSymbol: symbolname,
