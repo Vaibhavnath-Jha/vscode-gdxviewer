@@ -19,30 +19,37 @@
 }
 
 table {
-    border-collapse: collapse;
     width: 100%;
+    border-spacing: 0;
     background: var(--table-bg);
 }
 
 th,
 td {
     border: 1px solid var(--table-border);
-    padding: 0.5em 0.8em;
+    padding: 0.75em 1em;
     text-align: left;
+    border-bottom: 1px solid var(--table-border);
 }
 
 th {
     background: var(--table-header-bg);
-    font-weight: bold;
+    font-weight: 600;
     color: var(--table-header-fg);
     position: sticky;
     top: 0;
+    z-index: 1;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
 }
 
 tr:nth-child(even) td {
     background: var(--table-row-bg-alt);
 }
 
+tbody tr:hover td {
+    background-color: var(--vscode-list-hoverBackground, #2a2d2e);
+    color: var(--vscode-list-hoverForeground, #fff);
+}
 
 .symbol-tooltip-container {
     position: relative;
