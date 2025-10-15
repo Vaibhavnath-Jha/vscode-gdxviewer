@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { vscode } from '../utils/vscodeApi';
 
 export const useAppStore = create((set) => ({
     // --- states ---
@@ -6,7 +7,7 @@ export const useAppStore = create((set) => ({
     symbolIndex: {},
     categories: [],
     expandedCats: {},
-    selectedTable: null,
+    selectedSymbol: null,
     pagination: { pageIndex: 0, pageSize: 100 },
     columnVisibility: {},
     searchTerm: '',
@@ -19,18 +20,21 @@ export const useAppStore = create((set) => ({
         symbolIndex: data || {},
         categories: Object.keys(data || {}),
         isInitializing: false,
-        selectedTable: null,
         expandedCats: {},
         isResizing: false
     }),
     fileUpdated: () => set({ isInitializing: true }),
-    selectTable: (tableName, category) => set((state) => ({
-        selectedTable: tableName,
-        expandedCats: { [category]: true },
-        pagination: { ...state.pagination, pageIndex: 0 },
-        columnVisibility: {},
-        goToPageValue: 1
-    })),
+    selectSymbol: (symbolname, category) => set((state) => {
+        const newState = {
+            selectedSymbol: symbolname,
+            expandedCats: { [category]: true },
+            pagination: { ...state.pagination, pageIndex: 0 },
+            columnVisibility: {},
+            goToPageValue: 1
+        };
+        vscode.postMessage({ command: 'cacheState', selectedSymbol: symbolname });
+        return newState;
+    }),
     toggleCategory: (cat) => set((state) => ({
         expandedCats: { ...state.expandedCats, [cat]: !state.expandedCats[cat] }
     })),

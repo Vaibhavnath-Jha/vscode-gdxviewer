@@ -4,16 +4,16 @@ import './styles/Table.css';
 
 /**
  * A controlled input component for rendering the Tanstack table.
- * @param {string} props.selectedTable - The current selected symbol name.
+ * @param {string} props.selectedSymbol - The current selected symbol name.
  * @param {string} props.symText - Symbol text.
  * @param {table} props.table - The Tanstack table element.
  */
-function Table({ selectedTable, symText, table }) {
+function Table({ selectedSymbol, symText, table }) {
     return (
         <>
             <div className="table-header-info">
                 <div className="symbol-tooltip-container">
-                    <span className="symbol-span"><strong>{selectedTable}</strong></span>
+                    <span className="symbol-span"><strong>{selectedSymbol}</strong></span>
                     {symText && (
                         <div className="symbol-tooltip">
                             <div>{symText}</div>

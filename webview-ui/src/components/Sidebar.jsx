@@ -11,8 +11,8 @@ const Sidebar = forwardRef(({
     expandedCats,
     onToggleCategory,
     filteredSymbolIndex,
-    selectedTable,
-    onSelectTable
+    selectedSymbol,
+    onSelectSymbol
 }, ref) => {
     return (
         <div className="sidebar" ref={ref} style={style}>
@@ -38,8 +38,8 @@ const Sidebar = forwardRef(({
                                         filteredSymbolIndex[cat].map(tname => (
                                             <li
                                                 key={tname}
-                                                className={`table-li ${selectedTable === tname ? 'selected' : ''}`}
-                                                onClick={() => onSelectTable(tname, cat)}
+                                                className={`table-li ${selectedSymbol === tname ? 'selected' : ''}`}
+                                                onClick={() => onSelectSymbol(tname, cat)}
                                             >
                                                 {tname}
                                             </li>

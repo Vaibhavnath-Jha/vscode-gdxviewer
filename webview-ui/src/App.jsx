@@ -58,25 +58,25 @@ function App() {
 
     // --- Import states from Appstore ---
     const {
-        isInitializing, symbolIndex, categories, expandedCats, selectedTable, pagination,
+        isInitializing, symbolIndex, categories, expandedCats, selectedSymbol, pagination,
         columnVisibility, searchTerm, goToPageValue
     } = useAppStore();
 
     // --- Import actions from Appstore ---
     const {
         setPagination, setColumnVisibility, setSearchTerm, setGoToPageValue,
-        selectTable, toggleCategory, setExpandedCats
+        selectSymbol, toggleCategory, setExpandedCats
     } = useAppStore();
 
     // --- Tantstack-query ---
     const { data: tableQueryResult, isLoading, isError } = useQuery({
-        queryKey: ['symbolData', selectedTable, pagination.pageIndex, pagination.pageSize],
+        queryKey: ['symbolData', selectedSymbol, pagination.pageIndex, pagination.pageSize],
         queryFn: () => fetchSymbolData({
-            symbolName: selectedTable,
+            symbolName: selectedSymbol,
             page: pagination.pageIndex + 1,
             rows: pagination.pageSize,
         }),
-        enabled: !!selectedTable,
+        enabled: !!selectedSymbol,
         keepPreviousData: true,
         staleTime: Infinity,
     });
@@ -150,8 +150,8 @@ function App() {
                 expandedCats={expandedCats}
                 onToggleCategory={toggleCategory}
                 filteredSymbolIndex={filteredSymbolIndex}
-                selectedTable={selectedTable}
-                onSelectTable={selectTable}
+                selectedSymbol={selectedSymbol}
+                onSelectSymbol={selectSymbol}
             >
                 <div
                     className="resizer"
@@ -162,7 +162,7 @@ function App() {
                 ></div>
             </Sidebar>
             <div className="container">
-                {!selectedTable ? (
+                {!selectedSymbol ? (
                     <div className="nodata">Select a symbol to view its data.</div>
                 ) : isLoading ? (
                     <TableLoader />
@@ -171,7 +171,7 @@ function App() {
                 ) : tableData.length > 0 ? (
                     <>
                         <Table
-                            selectedTable={selectedTable}
+                            selectedSymbol={selectedSymbol}
                             symText={symText}
                             table={table}
                         />
@@ -185,7 +185,7 @@ function App() {
                         />
                     </>
                 ) : (
-                    <div className="nodata">No data available for <strong>{selectedTable}</strong>.</div>
+                    <div className="nodata">No data available for <strong>{selectedSymbol}</strong>.</div>
                 )}
             </div>
         </div>

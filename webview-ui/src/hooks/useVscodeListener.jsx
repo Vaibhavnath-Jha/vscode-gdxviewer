@@ -5,14 +5,24 @@ import { useAppStore } from '../store/store';
 
 export function useVscodeListener() {
     const queryClient = useQueryClient();
-    const { initialize, fileUpdated } = useAppStore();
+    const { initialize, fileUpdated, selectSymbol } = useAppStore();
 
     useEffect(() => {
         const handleMessage = (event) => {
             const message = event.data;
             switch (message.command) {
                 case 'initialize':
-                    initialize(message.data);
+                    const data = message.data || {};
+                    const lastSelectedSymbol = message.lastSelectedSymbol;
+                    initialize(data);
+                    if (lastSelectedSymbol) {
+                        for (const cat in data) {
+                            if (data[cat].includes(lastSelectedSymbol)) {
+                                selectSymbol(lastSelectedSymbol, cat);
+                                break;
+                            }
+                        }
+                    }
                     break;
                 case 'fileUpdated':
                     fileUpdated();
