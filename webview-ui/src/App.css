@@ -15,51 +15,6 @@
     min-width: 350px;
 }
 
-.table-container {
-    flex: 1;
-    overflow: auto;
-    border-radius: 6px;
-}
-
-.table-header-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5em;
-    font-size: large;
-    color: var(--container-fg);
-}
-
-.symbol-span strong {
-    font-weight: 600;
-    color: var(--category-outline);
-}
-
-table {
-    border-collapse: collapse;
-    width: 100%;
-    background: var(--table-bg);
-}
-
-th,
-td {
-    border: 1px solid var(--table-border);
-    padding: 0.5em 0.8em;
-    text-align: left;
-}
-
-th {
-    background: var(--table-header-bg);
-    font-weight: bold;
-    color: var(--table-header-fg);
-    position: sticky;
-    top: 0;
-}
-
-tr:nth-child(even) td {
-    background: var(--table-row-bg-alt);
-}
-
 .nodata {
     color: var(--nodata-fg);
     font-size: 1.1em;
@@ -107,44 +62,18 @@ tr:nth-child(even) td {
     }
 }
 
-.symbol-tooltip-container {
-    position: relative;
-    display: inline-block;
-}
-
-.symbol-tooltip {
-    visibility: hidden;
-    opacity: 0.9;
-    width: max-content;
-    max-width: 350px;
-    background-color: var(--sidebar-bg, #191d20);
-    color: var(--vscode-editor-foreground);
-    font-size: 0.9em;
-    text-align: left;
-    border-radius: 4px;
-    padding: 8px 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+.resizer {
     position: absolute;
-    z-index: 5;
-    top: 0;            
-    left: 100%;        
-    margin-left: 0.8em;
-    transition: opacity 0.2s;
+    top: 0;
+    right: -2px;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+    user-select: none;
+    z-index: 20;
 }
 
-.symbol-tooltip-container:hover .symbol-tooltip {
-    visibility: visible;
-    opacity: 1;
-}
-
-.symbol-tooltip div {
-    margin-bottom: 5px;
-}
-
-.symbol-tooltip div:last-child {
-    margin-bottom: 0;
-}
-
-.symbol-tooltip strong {
-    color: var(--vscode-descriptionForeground);
+.resizer:hover {
+    background-color: var(--vscode-sash-hoverBorder, #007fd4);
+    opacity: 0.5;
 }

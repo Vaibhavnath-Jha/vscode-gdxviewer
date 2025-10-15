@@ -1,19 +1,21 @@
-import React from 'react';
+import { forwardRef } from 'react';
 import Search from './Search';
 import './styles/Sidebar.css';
 
-function Sidebar({
+const Sidebar = forwardRef(({
+    style,
+    children,
     searchTerm,
     onSearchChange,
     categoriesToRender,
     expandedCats,
     onToggleCategory,
     filteredSymbolIndex,
-    selectedTable,
-    onSelectTable
-}) {
+    selectedSymbol,
+    onSelectSymbol
+}, ref) => {
     return (
-        <div className="sidebar">
+        <div className="sidebar" ref={ref} style={style}>
             <Search searchTerm={searchTerm} onSearchChange={onSearchChange} />
             <div className="category-list-container">
                 {categoriesToRender.map(cat => (
@@ -36,8 +38,8 @@ function Sidebar({
                                         filteredSymbolIndex[cat].map(tname => (
                                             <li
                                                 key={tname}
-                                                className={`table-li ${selectedTable === tname ? 'selected' : ''}`}
-                                                onClick={() => onSelectTable(tname, cat)}
+                                                className={`table-li ${selectedSymbol === tname ? 'selected' : ''}`}
+                                                onClick={() => onSelectSymbol(tname, cat)}
                                             >
                                                 {tname}
                                             </li>
@@ -49,8 +51,9 @@ function Sidebar({
                     </div>
                 ))}
             </div>
+            {children}
         </div>
     );
-}
+});
 
 export default Sidebar;
