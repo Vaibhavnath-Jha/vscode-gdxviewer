@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import Search from './Search';
 import './styles/Sidebar.css';
 

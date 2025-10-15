@@ -1,20 +1,21 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { vscode } from '../vscodeApi';
+import { vscode } from '../utils/vscodeApi';
+import { useAppStore } from '../store/store';
 
-
-export function useVscodeListener(dispatch) {
+export function useVscodeListener() {
     const queryClient = useQueryClient();
+    const { initialize, fileUpdated } = useAppStore();
 
     useEffect(() => {
         const handleMessage = (event) => {
             const message = event.data;
             switch (message.command) {
                 case 'initialize':
-                    dispatch({ type: 'INITIALIZE', payload: { data: message.data } });
+                    initialize(message.data);
                     break;
                 case 'fileUpdated':
-                    dispatch({ type: 'FILE_UPDATED' });
+                    fileUpdated();
                     queryClient.invalidateQueries();
                     break;
             }
@@ -24,6 +25,5 @@ export function useVscodeListener(dispatch) {
         vscode.postMessage({ command: 'initialize' });
 
         return () => window.removeEventListener('message', handleMessage);
-    }, [queryClient, dispatch]);
+    }, [queryClient, initialize, fileUpdated]);
 }
-

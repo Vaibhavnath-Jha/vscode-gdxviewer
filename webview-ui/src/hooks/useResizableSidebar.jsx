@@ -1,15 +1,19 @@
 import { useEffect } from 'react';
+import { useAppStore } from '../store/store';
 
-export function useResizableSidebar(isResizing, dispatch) {
+export function useResizableSidebar(sidebarRef) {
+
+    const { isResizing, setSidebarWidth, stopResizing } = useAppStore();
+
     useEffect(() => {
         const handleMouseMove = (e) => {
-            if (!isResizing) return;
-            const newWidth = e.clientX;
+            if (!isResizing || !sidebarRef.current) return;
+            const newWidth = e.clientX - sidebarRef.current.getBoundingClientRect().left;
             if (newWidth >= 200 && newWidth <= 500) {
-                dispatch({ type: 'SET_SIDEBAR_WIDTH', payload: newWidth });
+                setSidebarWidth(newWidth);
             }
         };
-        const handleMouseUp = () => dispatch({ type: 'SET_IS_RESIZING', payload: false });
+        const handleMouseUp = () => stopResizing();
 
         if (isResizing) {
             window.addEventListener('mousemove', handleMouseMove);
@@ -19,6 +23,5 @@ export function useResizableSidebar(isResizing, dispatch) {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
         };
-    }, [isResizing, dispatch]);
+    }, [isResizing, setSidebarWidth, stopResizing, sidebarRef]);
 }
-

@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './styles/ColumnToggle.css';
 
 function ColumnToggle({ table }) {
     const [isOpen, setIsOpen] = useState(false);
 
-    React.useEffect(() => {
+    useEffect(() => {
         const handleClickOutside = (event) => {
             if (isOpen && !event.target.closest('.column-toggle-container')) {
                 setIsOpen(false);
