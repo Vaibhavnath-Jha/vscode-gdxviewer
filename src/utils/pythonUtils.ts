@@ -12,7 +12,10 @@ export async function getPythonPath(): Promise<string> {
   const pythonPath = await vscode.commands.executeCommand<string>(
     'python.interpreterPath', { workspaceFolder: vscode.workspace.workspaceFolders?.[0] }
   );
-  if (pythonPath) { return pythonPath; }
+  if (pythonPath) { 
+    // Remove surrounding quotes if present (Python extension may add them for paths with spaces)
+    return pythonPath.replace(/^["']|["']$/g, '');
+  }
   throw new Error("No Python interpreter is selected. Please use the 'Python: Select Interpreter' command.");
 }
 
